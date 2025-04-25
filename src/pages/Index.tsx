@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowRight, Star, ChevronLeft, ChevronRight, MapPin, Clock, Phone } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowRight, Star, ChevronLeft, ChevronRight, MapPin, Clock, Phone, X } from 'lucide-react';
 import AnimatedSection from '@/components/animations/AnimatedSection';
 import StaggeredItems from '@/components/animations/StaggeredItems';
 
