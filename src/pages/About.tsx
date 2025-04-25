@@ -12,28 +12,28 @@ const teamMembers = [
     name: 'Emily Chen',
     role: 'Executive Chef',
     image: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
-    description: 'With over 15 years of experience in fine dining, Emily brings creative vision and technical excellence to our menu.'
+    description: "With over 15 years of experience in fine dining, Emily brings creative vision and technical excellence to our menu."
   },
   {
     id: 2,
     name: 'Marcus Johnson',
     role: 'Restaurant Manager',
     image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
-    description: 'Marcus ensures that every guest receives exceptional service and leaves with unforgettable memories.'
+    description: "Marcus ensures that every guest receives exceptional service and leaves with unforgettable memories."
   },
   {
     id: 3,
     name: 'Sophia Patel',
     role: 'Pastry Chef',
     image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
-    description: 'Sophia's innovative desserts combine traditional techniques with modern flavors for a perfect finale to every meal.'
+    description: "Sophia's innovative desserts combine traditional techniques with modern flavors for a perfect finale to every meal."
   },
   {
     id: 4,
     name: 'David Rodriguez',
     role: 'Sommelier',
     image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
-    description: 'David's expertise in wine pairing elevates our dining experience with perfect complementary selections.'
+    description: "David's expertise in wine pairing elevates our dining experience with perfect complementary selections."
   }
 ];
 
