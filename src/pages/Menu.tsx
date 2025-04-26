@@ -1,13 +1,18 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, BarChart, FilterX } from 'lucide-react';
+import { Plus, Filter, X, Search } from 'lucide-react';
 import AnimatedSection from '@/components/animations/AnimatedSection';
 import StaggeredItems from '@/components/animations/StaggeredItems';
 import { useToast } from '@/hooks/use-toast';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { CustomButton } from '@/components/ui/custom-button';
+import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 // Menu categories
 const categories = [
+  { id: 'all', name: 'All Items' },
   { id: 'starters', name: 'Starters' },
   { id: 'mains', name: 'Mains' },
   { id: 'sides', name: 'Sides' },
@@ -23,7 +28,8 @@ const menuItems = [
     description: 'Fresh burrata cheese with heirloom tomatoes, basil, and aged balsamic.',
     price: 14.99,
     image: 'https://images.unsplash.com/photo-1505253758473-96b7015fcd40?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    category: 'starters'
+    category: 'starters',
+    featured: true
   },
   {
     id: 2,
@@ -47,7 +53,8 @@ const menuItems = [
     description: '8oz prime beef tenderloin with red wine reduction and roasted vegetables.',
     price: 42.99,
     image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    category: 'mains'
+    category: 'mains',
+    featured: true
   },
   {
     id: 5,
@@ -95,7 +102,8 @@ const menuItems = [
     description: 'Warm chocolate cake with a molten center and vanilla ice cream.',
     price: 12.99,
     image: 'https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    category: 'desserts'
+    category: 'desserts',
+    featured: true
   },
   {
     id: 11,
@@ -140,23 +148,18 @@ const menuItems = [
 ];
 
 const Menu: React.FC = () => {
-  const [activeCategory, setActiveCategory] = useState('starters');
-  const [mobileCategoryOpen, setMobileCategoryOpen] = useState(false);
-  const categoryRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
   
-  // Filter menu items by active category
-  const filteredItems = menuItems.filter(item => item.category === activeCategory);
-  
-  const handleCategoryClick = (categoryId: string) => {
-    setActiveCategory(categoryId);
-    setMobileCategoryOpen(false);
-    
-    // Scroll to the category section
-    if (categoryRefs.current[categoryId]) {
-      categoryRefs.current[categoryId]?.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
+  // Filter menu items by active category and search term
+  const filteredItems = menuItems.filter(item => {
+    const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         item.description.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
   
   const handleAddToCart = (item: typeof menuItems[0]) => {
     toast({
@@ -165,137 +168,271 @@ const Menu: React.FC = () => {
     });
   };
 
+  // Scroll to top when category changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeCategory]);
+
   return (
-    <div>
+    <div className="bg-gray-50">
       {/* Menu Header */}
-      <section className="bg-restaurant-green text-white py-20">
-        <div className="container-custom text-center">
+      <section className="bg-restaurant-green py-16 md:py-24 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="blob absolute top-0 right-0 w-96 h-96 bg-blue-500 -mr-24 -mt-24"></div>
+          <div className="blob-2 absolute bottom-0 left-0 w-96 h-96 bg-restaurant-terracotta -ml-24 -mb-24"></div>
+        </div>
+        
+        <div className="container-custom text-center relative z-10">
           <AnimatedSection animation="fadeIn">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Our Menu</h1>
-            <p className="max-w-2xl mx-auto text-lg text-white/80">
-              Savor our carefully crafted dishes, made with passion and the finest ingredients.
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 text-white">Our Menu</h1>
+            <div className="w-24 h-1 bg-restaurant-terracotta mx-auto mb-6"></div>
+            <p className="max-w-2xl mx-auto text-lg text-white/80 mb-8">
+              Explore our carefully crafted dishes, made with the finest ingredients and passion for culinary excellence.
             </p>
+            
+            {/* Desktop search bar */}
+            <div className="max-w-md mx-auto relative hidden md:block">
+              <input
+                type="text"
+                placeholder="Search our menu..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-5 py-3 rounded-full bg-white/10 backdrop-blur border border-white/20 text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-white/30"
+              />
+              <Search className="absolute right-4 top-3 text-white/70" size={20} />
+            </div>
           </AnimatedSection>
         </div>
       </section>
 
       <div className="container-custom py-12">
-        <div className="flex flex-col md:flex-row gap-8">
-          {/* Mobile Category Menu Button */}
-          <div className="md:hidden mb-4">
+        {/* Mobile search bar */}
+        <div className="md:hidden mb-6">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search our menu..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-3 pl-10 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-restaurant-green/30"
+            />
+            <Search className="absolute left-3 top-3.5 text-gray-400" size={18} />
+            {searchTerm && (
+              <button 
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600"
+              >
+                <X size={18} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Mobile Category Filter Button */}
+          <div className="lg:hidden mb-4">
             <button 
-              className="w-full flex items-center justify-between bg-white p-4 rounded-lg shadow-md"
-              onClick={() => setMobileCategoryOpen(!mobileCategoryOpen)}
+              className="w-full flex items-center justify-between bg-white p-4 rounded-lg shadow-sm border border-gray-100"
+              onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
             >
-              <span className="font-medium">{categories.find(cat => cat.id === activeCategory)?.name || 'Select Category'}</span>
-              <BarChart size={20} />
+              <div className="flex items-center">
+                <Filter size={18} className="mr-2 text-restaurant-green" />
+                <span className="font-medium">Filter: {categories.find(cat => cat.id === activeCategory)?.name}</span>
+              </div>
+              <span className={`transition-transform duration-300 ${mobileFiltersOpen ? 'rotate-180' : ''}`}>
+                ▼
+              </span>
             </button>
             
             <AnimatePresence>
-              {mobileCategoryOpen && (
+              {mobileFiltersOpen && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  className="bg-white mt-2 rounded-lg shadow-md overflow-hidden"
+                  transition={{ duration: 0.3 }}
+                  className="bg-white mt-2 rounded-lg shadow-md overflow-hidden border border-gray-100"
                 >
-                  {categories.map((category) => (
-                    <button
-                      key={category.id}
-                      className={`block w-full text-left px-4 py-3 transition-colors ${
-                        activeCategory === category.id
-                          ? 'bg-restaurant-green text-white'
-                          : 'hover:bg-gray-100'
-                      }`}
-                      onClick={() => handleCategoryClick(category.id)}
-                    >
-                      {category.name}
-                    </button>
-                  ))}
+                  <RadioGroup 
+                    value={activeCategory} 
+                    onValueChange={setActiveCategory}
+                    className="p-2"
+                  >
+                    {categories.map((category) => (
+                      <div key={category.id} className="flex items-center space-x-2 p-2">
+                        <RadioGroupItem value={category.id} id={`category-${category.id}-mobile`} />
+                        <label 
+                          htmlFor={`category-${category.id}-mobile`}
+                          className={`text-sm font-medium flex-grow cursor-pointer ${
+                            activeCategory === category.id ? 'text-restaurant-green' : 'text-gray-700'
+                          }`}
+                        >
+                          {category.name}
+                        </label>
+                      </div>
+                    ))}
+                  </RadioGroup>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
           {/* Desktop Category Sidebar */}
-          <div className="hidden md:block w-64 shrink-0">
-            <div className="sticky top-24 bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="hidden lg:block w-64 shrink-0">
+            <Card className="sticky top-24 overflow-hidden">
               <div className="p-4 bg-restaurant-green text-white">
-                <h2 className="text-xl font-semibold">Categories</h2>
+                <h2 className="text-xl font-semibold flex items-center">
+                  <Filter size={18} className="mr-2" />
+                  Categories
+                </h2>
               </div>
-              <nav className="p-4">
-                <ul className="space-y-2">
+              <CardContent className="p-4">
+                <RadioGroup 
+                  value={activeCategory} 
+                  onValueChange={setActiveCategory}
+                  className="space-y-1"
+                >
                   {categories.map((category) => (
-                    <li key={category.id}>
-                      <button
-                        className={`w-full text-left px-4 py-2 rounded-md transition-colors ${
-                          activeCategory === category.id
-                            ? 'bg-restaurant-green text-white'
-                            : 'hover:bg-gray-100'
+                    <div key={category.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-50">
+                      <RadioGroupItem value={category.id} id={`category-${category.id}`} />
+                      <label 
+                        htmlFor={`category-${category.id}`}
+                        className={`text-sm font-medium flex-grow cursor-pointer ${
+                          activeCategory === category.id ? 'text-restaurant-green' : 'text-gray-700'
                         }`}
-                        onClick={() => handleCategoryClick(category.id)}
                       >
                         {category.name}
-                      </button>
-                    </li>
+                      </label>
+                    </div>
                   ))}
-                </ul>
-              </nav>
-            </div>
+                </RadioGroup>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Menu Items */}
+          {/* Menu Items Grid */}
           <div className="flex-grow">
-            {categories.map((category) => (
-              <div 
-                key={category.id}
-                id={category.id}
-                ref={el => categoryRefs.current[category.id] = el}
-                className={activeCategory === category.id ? '' : 'hidden'}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeCategory + searchTerm}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
               >
-                <div className="mb-8">
-                  <h2 className="text-2xl md:text-3xl font-bold mb-6 flex items-center">
-                    <span className="border-b-2 border-restaurant-terracotta pb-2">{category.name}</span>
-                  </h2>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <StaggeredItems animation="fadeIn">
-                      {menuItems
-                        .filter(item => item.category === category.id)
-                        .map((item) => (
-                          <div
-                            key={item.id}
-                            className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col hover-scale"
-                          >
-                            <div className="h-48 overflow-hidden">
-                              <img
-                                src={item.image}
-                                alt={item.name}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <div className="p-5 flex-grow flex flex-col">
-                              <div className="mb-2 flex justify-between items-start">
-                                <h3 className="text-xl font-semibold">{item.name}</h3>
-                                <div className="text-xl font-bold text-restaurant-green">${item.price.toFixed(2)}</div>
+                {filteredItems.length > 0 ? (
+                  <>
+                    {/* Featured items at the top for "All" category */}
+                    {activeCategory === 'all' && (
+                      <div className="mb-10">
+                        <h2 className="text-2xl font-bold mb-6 flex items-center">
+                          <span className="border-b-2 border-restaurant-terracotta pb-1">Featured Items</span>
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {filteredItems.filter(item => item.featured).map((item) => (
+                            <motion.div
+                              key={item.id}
+                              layout
+                              className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-all duration-300"
+                            >
+                              <div className="relative h-48 overflow-hidden">
+                                <motion.img
+                                  src={item.image}
+                                  alt={item.name}
+                                  className="w-full h-full object-cover"
+                                  whileHover={{ scale: 1.05 }}
+                                  transition={{ duration: 0.4 }}
+                                />
+                                <div className="absolute top-3 right-3 bg-restaurant-terracotta text-white px-3 py-1 rounded-full text-xs font-medium">
+                                  Featured
+                                </div>
                               </div>
-                              <p className="text-gray-600 mb-4 flex-grow line-clamp-2">{item.description}</p>
-                              <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className="btn-secondary flex items-center justify-center"
-                                onClick={() => handleAddToCart(item)}
+                              <div className="p-5">
+                                <div className="mb-2 flex justify-between items-start">
+                                  <h3 className="text-xl font-semibold">{item.name}</h3>
+                                  <div className="text-xl font-bold text-restaurant-green">${item.price.toFixed(2)}</div>
+                                </div>
+                                <p className="text-gray-600 mb-4 line-clamp-2">{item.description}</p>
+                                <CustomButton
+                                  variant="secondary"
+                                  className="w-full"
+                                  onClick={() => handleAddToCart(item)}
+                                  icon={<Plus size={18} />}
+                                >
+                                  Add to Cart
+                                </CustomButton>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Regular menu items */}
+                    <div>
+                      <h2 className="text-2xl font-bold mb-6 flex items-center">
+                        <span className="border-b-2 border-restaurant-terracotta pb-1">
+                          {activeCategory === 'all' ? 'All Menu Items' : categories.find(cat => cat.id === activeCategory)?.name}
+                        </span>
+                        <span className="ml-3 bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs">
+                          {filteredItems.filter(item => activeCategory === 'all' ? !item.featured : true).length} items
+                        </span>
+                      </h2>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <StaggeredItems animation="fadeIn">
+                          {filteredItems
+                            .filter(item => activeCategory === 'all' ? !item.featured : true)
+                            .map((item) => (
+                              <motion.div
+                                key={item.id}
+                                layout
+                                className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-all duration-300"
                               >
-                                <Plus size={18} className="mr-1" /> Add to Cart
-                              </motion.button>
-                            </div>
-                          </div>
-                        ))}
-                    </StaggeredItems>
+                                <div className="h-48 overflow-hidden">
+                                  <motion.img
+                                    src={item.image}
+                                    alt={item.name}
+                                    className="w-full h-full object-cover"
+                                    whileHover={{ scale: 1.05 }}
+                                    transition={{ duration: 0.4 }}
+                                  />
+                                </div>
+                                <div className="p-5">
+                                  <div className="mb-2 flex justify-between items-start">
+                                    <h3 className="text-xl font-semibold">{item.name}</h3>
+                                    <div className="text-xl font-bold text-restaurant-green">${item.price.toFixed(2)}</div>
+                                  </div>
+                                  <p className="text-gray-600 mb-4 line-clamp-2">{item.description}</p>
+                                  <CustomButton
+                                    variant="secondary"
+                                    className="w-full"
+                                    onClick={() => handleAddToCart(item)}
+                                    icon={<Plus size={18} />}
+                                  >
+                                    Add to Cart
+                                  </CustomButton>
+                                </div>
+                              </motion.div>
+                            ))}
+                        </StaggeredItems>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                      <Search size={24} className="text-gray-400" />
+                    </div>
+                    <h3 className="text-xl font-medium mb-2">No items found</h3>
+                    <p className="text-gray-500 mb-6">Try adjusting your search or filter to find what you're looking for.</p>
+                    <CustomButton onClick={() => {setSearchTerm(''); setActiveCategory('all');}}>
+                      Clear Filters
+                    </CustomButton>
                   </div>
-                </div>
-              </div>
-            ))}
+                )}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </div>
