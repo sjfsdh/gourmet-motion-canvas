@@ -20,18 +20,27 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, onAddToCart }) => {
   return (
     <motion.div
       layout
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.3 }}
       className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-all duration-300"
     >
-      <div className="relative h-48 overflow-hidden">
-        <motion.img
-          src={item.image}
-          alt={item.name}
-          className="w-full h-full object-cover"
+      <div className="relative h-48 overflow-hidden group">
+        <motion.div
           whileHover={{ scale: 1.05 }}
           transition={{ duration: 0.4 }}
-        />
+          className="w-full h-full"
+        >
+          <img
+            src={item.image}
+            alt={item.name}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        </motion.div>
         {item.featured && (
-          <div className="absolute top-3 right-3 bg-restaurant-terracotta text-white px-3 py-1 rounded-full text-xs font-medium">
+          <div className="absolute top-3 right-3 bg-restaurant-terracotta text-white px-3 py-1 rounded-full text-xs font-medium shadow-md">
             Featured
           </div>
         )}
@@ -42,14 +51,16 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, onAddToCart }) => {
           <div className="text-xl font-bold text-restaurant-green">${item.price.toFixed(2)}</div>
         </div>
         <p className="text-gray-600 mb-4 line-clamp-2">{item.description}</p>
-        <CustomButton
-          variant="secondary"
-          className="w-full"
-          onClick={() => onAddToCart(item)}
-          icon={<Plus size={18} />}
-        >
-          Add to Cart
-        </CustomButton>
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+          <CustomButton
+            variant="secondary"
+            className="w-full"
+            onClick={() => onAddToCart(item)}
+            icon={<Plus size={18} />}
+          >
+            Add to Cart
+          </CustomButton>
+        </motion.div>
       </div>
     </motion.div>
   );
