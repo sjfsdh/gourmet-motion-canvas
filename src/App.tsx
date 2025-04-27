@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { User } from 'lucide-react';
 import Layout from "./components/Layout";
 import Index from "./pages/Index";
 import Menu from "./pages/Menu";
@@ -12,6 +13,7 @@ import Checkout from "./pages/Checkout";
 import Auth from "./pages/Auth";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
+import Account from "./pages/Account";
 import NotFound from "./pages/NotFound";
 
 // Admin imports
@@ -24,6 +26,18 @@ import GalleryManager from "./pages/Admin/GalleryManager";
 import AdminSettings from "./pages/Admin/AdminSettings";
 import AdminAuth from "./pages/Admin/AdminAuth";
 import AdminProfile from "./pages/Admin/AdminProfile";
+
+// Create a ProtectedRoute component for admin access
+const ProtectedAdminRoute = ({ children }: { children: JSX.Element }) => {
+  // Check if admin token exists in localStorage
+  const isAdminLoggedIn = localStorage.getItem('adminToken') !== null;
+  
+  if (!isAdminLoggedIn) {
+    return <Navigate to="/admin/login" replace />;
+  }
+  
+  return children;
+};
 
 const queryClient = new QueryClient();
 
@@ -42,12 +56,13 @@ const App = () => (
           <Route path="/about" element={<Layout><About /></Layout>} />
           <Route path="/contact" element={<Layout><Contact /></Layout>} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/account" element={<Layout><Account /></Layout>} />
           
           {/* Admin Auth Route */}
           <Route path="/admin/login" element={<AdminAuth />} />
           
-          {/* Admin Routes */}
-          <Route path="/admin" element={<AdminLayout />}>
+          {/* Admin Routes - Protected */}
+          <Route path="/admin" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
             <Route index element={<Dashboard />} />
             <Route path="menu" element={<MenuManager />} />
             <Route path="categories" element={<CategoryManager />} />

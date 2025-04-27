@@ -1,138 +1,148 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { LockKeyhole, User } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import AnimatedSection from '@/components/animations/AnimatedSection';
+import { CustomButton } from '@/components/ui/custom-button';
 
 const AdminAuth = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Check if already logged in
+  useEffect(() => {
+    if (localStorage.getItem('adminToken')) {
+      navigate('/admin');
+    }
+  }, [navigate]);
+
+  const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // In a real application, this would be a proper API request
+    // This is a mock admin login. In a real app, this would be authenticated against a backend
     setTimeout(() => {
-      // Mock admin credentials check (replace with actual auth in production)
-      if (username === 'admin' && password === 'admin123') {
-        // Storing admin token (would be a JWT in real implementation)
-        localStorage.setItem('adminToken', 'mock-admin-token');
+      // For demo, only allow admin@example.com with password 'admin123'
+      if (email === 'admin@example.com' && password === 'admin123') {
+        localStorage.setItem('adminToken', 'mock-jwt-admin-token');
+        localStorage.setItem('adminUser', JSON.stringify({ 
+          name: 'Admin User', 
+          email: 'admin@example.com',
+          role: 'Administrator'
+        }));
         
         toast({
-          title: "Login Successful",
+          title: "Admin login successful!",
           description: "Welcome to the admin dashboard",
         });
         
         navigate('/admin');
       } else {
         toast({
-          title: "Authentication Failed",
-          description: "Invalid username or password",
-          variant: "destructive",
+          title: "Login failed",
+          description: "Invalid admin credentials",
+          variant: "destructive"
         });
       }
+      
       setIsLoading(false);
     }, 1000);
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <AnimatedSection animation="fadeIn">
-        <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <motion.div 
-            initial={{ y: -20 }}
-            animate={{ y: 0 }}
-            className="flex justify-center"
-          >
-            <div className="w-16 h-16 bg-restaurant-green rounded-full flex items-center justify-center">
-              <LockKeyhole className="h-8 w-8 text-white" />
-            </div>
-          </motion.div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Admin Login
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Access the restaurant management system
-          </p>
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md"
+      >
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-800">Admin Login</h1>
+          <p className="text-gray-600 mt-2">Sign in to access the admin dashboard</p>
         </div>
 
-        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-            <form className="space-y-6" onSubmit={handleSubmit}>
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                  Username
-                </label>
-                <div className="mt-1 relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="username"
-                    name="username"
-                    type="text"
-                    required
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="pl-10 block w-full border-gray-300 rounded-md shadow-sm focus:ring-restaurant-green focus:border-restaurant-green sm:text-sm"
-                    placeholder="admin"
-                  />
-                </div>
+        <form onSubmit={handleAdminLogin} className="space-y-6">
+          <div className="space-y-4">
+            <div className="relative">
+              <div className="absolute left-3 top-3 text-gray-400">
+                <Mail size={18} />
               </div>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                placeholder="Admin Email"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green transition-all"
+              />
+            </div>
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  Password
-                </label>
-                <div className="mt-1 relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <LockKeyhole className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 block w-full border-gray-300 rounded-md shadow-sm focus:ring-restaurant-green focus:border-restaurant-green sm:text-sm"
-                    placeholder="••••••••"
-                  />
-                </div>
+            <div className="relative">
+              <div className="absolute left-3 top-3 text-gray-400">
+                <Lock size={18} />
               </div>
-
-              <div>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-restaurant-green hover:bg-restaurant-green/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-restaurant-green"
-                >
-                  {isLoading ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    'Sign in'
-                  )}
-                </motion.button>
-              </div>
-            </form>
-            <div className="mt-6">
-              <div className="text-sm text-center">
-                <p className="text-gray-500">
-                  Demo credentials: admin / admin123
-                </p>
-              </div>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="Password"
+                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
-        </div>
-      </AnimatedSection>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <input
+                id="remember-me"
+                name="remember-me"
+                type="checkbox"
+                className="h-4 w-4 text-restaurant-green focus:ring-restaurant-green border-gray-300 rounded"
+              />
+              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+                Remember me
+              </label>
+            </div>
+
+            <div className="text-sm">
+              <a href="#" className="text-restaurant-green hover:text-restaurant-green/80">
+                Forgot password?
+              </a>
+            </div>
+          </div>
+
+          <CustomButton
+            type="submit"
+            className="w-full justify-center"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Signing in...' : 'Sign In to Admin'}
+          </CustomButton>
+
+          <div className="text-center mt-4">
+            <a
+              href="/"
+              className="text-sm text-blue-600 hover:underline"
+            >
+              Return to website
+            </a>
+          </div>
+        </form>
+      </motion.div>
     </div>
   );
 };

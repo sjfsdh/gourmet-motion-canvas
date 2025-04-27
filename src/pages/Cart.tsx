@@ -1,218 +1,258 @@
 
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, Plus, Minus, ArrowRight, ShoppingBag } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { ShoppingBag, Trash2, Plus, Minus, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { CustomButton } from '@/components/ui/custom-button';
 import AnimatedSection from '@/components/animations/AnimatedSection';
 
-// Mock cart data
-const initialCartItems = [
-  {
-    id: 1,
-    name: 'Truffle Risotto',
-    price: 24.99,
-    quantity: 1,
-    image: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 5,
-    name: 'Herb-Crusted Salmon',
-    price: 29.99,
-    quantity: 2,
-    image: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'
-  }
-];
+interface CartItem {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  image: string;
+  quantity: number;
+  category?: string;
+}
 
 const Cart = () => {
-  const [cartItems, setCartItems] = useState(initialCartItems);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Calculate subtotal
-  const subtotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
-  const tax = subtotal * 0.0825; // 8.25% tax
-  const deliveryFee = 4.99;
-  const total = subtotal + tax + deliveryFee;
+  useEffect(() => {
+    // Load cart items from localStorage
+    try {
+      const savedCart = localStorage.getItem('cart');
+      if (savedCart) {
+        const parsedCart = JSON.parse(savedCart);
+        setCartItems(parsedCart);
+      }
+    } catch (error) {
+      console.error("Error loading cart:", error);
+      toast({
+        title: "Error",
+        description: "There was an issue loading your cart",
+        variant: "destructive",
+      });
+    }
+    
+    setIsLoading(false);
+  }, [toast]);
 
-  // Update item quantity
-  const updateQuantity = (id: number, newQuantity: number) => {
-    if (newQuantity < 1) return;
-    setCartItems(prevItems =>
-      prevItems.map(item =>
-        item.id === id ? { ...item, quantity: newQuantity } : item
-      )
-    );
+  const updateCart = (newCart: CartItem[]) => {
+    setCartItems(newCart);
+    localStorage.setItem('cart', JSON.stringify(newCart));
   };
 
-  // Remove item from cart
+  const updateItemQuantity = (id: number, action: 'increase' | 'decrease') => {
+    const updatedCart = cartItems.map(item => {
+      if (item.id === id) {
+        if (action === 'increase') {
+          return { ...item, quantity: item.quantity + 1 };
+        } else if (action === 'decrease' && item.quantity > 1) {
+          return { ...item, quantity: item.quantity - 1 };
+        }
+      }
+      return item;
+    });
+    
+    updateCart(updatedCart);
+  };
+
   const removeItem = (id: number) => {
-    setCartItems(prevItems => prevItems.filter(item => item.id !== id));
+    const updatedCart = cartItems.filter(item => item.id !== id);
+    updateCart(updatedCart);
+    
     toast({
       title: "Item Removed",
-      description: "Item has been removed from your cart."
+      description: "Item has been removed from your cart",
     });
   };
 
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+  const clearCart = () => {
+    updateCart([]);
+    toast({
+      title: "Cart Cleared",
+      description: "All items have been removed from your cart",
+    });
   };
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
-    exit: { opacity: 0, x: -100, transition: { duration: 0.3 } }
+  const calculateSubtotal = () => {
+    return cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   };
+
+  const subtotal = calculateSubtotal();
+  const tax = subtotal * 0.08; // 8% tax
+  const total = subtotal + tax;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-center">
+          <p>Loading cart...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (cartItems.length === 0) {
+    return (
+      <div className="bg-gray-50 min-h-screen py-12">
+        <div className="container-custom">
+          <AnimatedSection animation="fadeIn">
+            <div className="bg-white rounded-lg shadow-md p-8 text-center">
+              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <ShoppingBag size={32} className="text-gray-400" />
+              </div>
+              <h1 className="text-2xl font-bold mb-2">Your Cart is Empty</h1>
+              <p className="text-gray-600 mb-8">
+                Looks like you haven't added anything to your cart yet.
+              </p>
+              <CustomButton onClick={() => navigate('/menu')}>
+                Browse Menu
+              </CustomButton>
+            </div>
+          </AnimatedSection>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-gray-50 min-h-screen">
-      <div className="container-custom py-12">
+    <div className="bg-gray-50 min-h-screen py-12">
+      <div className="container-custom">
         <AnimatedSection animation="fadeIn">
-          <h1 className="text-3xl md:text-4xl font-bold mb-8">Your Cart</h1>
-        </AnimatedSection>
-
-        {cartItems.length > 0 ? (
+          <h1 className="text-3xl font-bold mb-8">Your Cart</h1>
+          
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Cart Items */}
             <div className="lg:col-span-2">
-              <motion.div
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="bg-white rounded-lg shadow-md overflow-hidden"
-              >
-                <div className="p-6 border-b border-gray-200">
-                  <h2 className="text-xl font-semibold">Order Items</h2>
+              <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+                  <h2 className="text-xl font-semibold">Shopping Cart ({cartItems.length})</h2>
+                  <button
+                    onClick={clearCart}
+                    className="text-red-500 hover:text-red-700 text-sm flex items-center"
+                  >
+                    <Trash2 size={16} className="mr-1" />
+                    Clear All
+                  </button>
                 </div>
-
-                <AnimatePresence>
-                  {cartItems.map(item => (
-                    <motion.div
+                
+                <div className="divide-y divide-gray-200">
+                  {cartItems.map((item) => (
+                    <motion.div 
                       key={item.id}
-                      variants={itemVariants}
-                      exit="exit"
-                      className="p-6 border-b border-gray-200 flex items-center"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="p-4 sm:p-6 flex flex-col sm:flex-row"
                     >
-                      <div className="w-24 h-24 rounded-md overflow-hidden shrink-0">
-                        <img
-                          src={item.image}
-                          alt={item.name}
+                      <div className="w-full sm:w-24 h-24 bg-gray-100 rounded-md overflow-hidden mb-4 sm:mb-0 sm:mr-6">
+                        <img 
+                          src={item.image} 
+                          alt={item.name} 
                           className="w-full h-full object-cover"
                         />
                       </div>
                       
-                      <div className="ml-6 flex-grow">
-                        <h3 className="text-lg font-semibold mb-1">{item.name}</h3>
-                        <p className="text-restaurant-green font-medium">${item.price.toFixed(2)}</p>
-                      </div>
-                      
-                      <div className="flex items-center">
-                        <div className="flex items-center border rounded-md mr-4">
-                          <motion.button
-                            whileHover={{ backgroundColor: '#f3f4f6' }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                            className="px-3 py-1"
-                          >
-                            <Minus size={16} />
-                          </motion.button>
-                          
-                          <span className="px-4 py-1 min-w-[32px] text-center">
-                            {item.quantity}
-                          </span>
-                          
-                          <motion.button
-                            whileHover={{ backgroundColor: '#f3f4f6' }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                            className="px-3 py-1"
-                          >
-                            <Plus size={16} />
-                          </motion.button>
+                      <div className="flex-grow">
+                        <div className="flex justify-between mb-2">
+                          <h3 className="text-lg font-semibold">{item.name}</h3>
+                          <p className="text-lg font-bold text-restaurant-green">
+                            ${(item.price * item.quantity).toFixed(2)}
+                          </p>
                         </div>
                         
-                        <motion.button
-                          whileHover={{ color: '#ef4444' }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => removeItem(item.id)}
-                          aria-label="Remove item"
-                          className="text-gray-400"
-                        >
-                          <Trash2 size={20} />
-                        </motion.button>
+                        <p className="text-gray-500 text-sm mb-4 line-clamp-1">
+                          {item.description}
+                        </p>
+                        
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center">
+                            <button
+                              onClick={() => updateItemQuantity(item.id, 'decrease')}
+                              disabled={item.quantity <= 1}
+                              className={`w-8 h-8 rounded-full flex items-center justify-center border ${
+                                item.quantity <= 1 ? 'border-gray-200 text-gray-300' : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+                              }`}
+                            >
+                              <Minus size={14} />
+                            </button>
+                            <span className="mx-3 w-8 text-center">{item.quantity}</span>
+                            <button
+                              onClick={() => updateItemQuantity(item.id, 'increase')}
+                              className="w-8 h-8 rounded-full flex items-center justify-center border border-gray-300 text-gray-600 hover:bg-gray-100"
+                            >
+                              <Plus size={14} />
+                            </button>
+                          </div>
+                          
+                          <button
+                            onClick={() => removeItem(item.id)}
+                            className="text-red-500 hover:text-red-700 flex items-center"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
                       </div>
                     </motion.div>
                   ))}
-                </AnimatePresence>
-              </motion.div>
+                </div>
+              </div>
+              
+              <div className="mt-6 flex justify-between">
+                <Link to="/menu">
+                  <CustomButton variant="outline" className="flex items-center">
+                    <ArrowLeft size={16} className="mr-2" />
+                    Continue Shopping
+                  </CustomButton>
+                </Link>
+              </div>
             </div>
-
+            
             {/* Order Summary */}
             <div className="lg:col-span-1">
-              <AnimatedSection animation="slideInRight" className="bg-white rounded-lg shadow-md overflow-hidden">
-                <div className="p-6 border-b border-gray-200">
-                  <h2 className="text-xl font-semibold">Order Summary</h2>
-                </div>
+              <div className="bg-white rounded-lg shadow-md p-6 sticky top-24">
+                <h2 className="text-xl font-semibold mb-6">Order Summary</h2>
                 
-                <div className="p-6">
-                  <div className="space-y-4 mb-6">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Subtotal</span>
-                      <span>${subtotal.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Tax</span>
-                      <span>${tax.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Delivery Fee</span>
-                      <span>${deliveryFee.toFixed(2)}</span>
-                    </div>
-                    <div className="border-t pt-4 mt-4">
-                      <div className="flex justify-between font-semibold">
-                        <span>Total</span>
-                        <span className="text-restaurant-green text-xl">${total.toFixed(2)}</span>
-                      </div>
-                    </div>
+                <div className="space-y-4">
+                  <div className="flex justify-between text-gray-600">
+                    <span>Subtotal</span>
+                    <span>${subtotal.toFixed(2)}</span>
                   </div>
                   
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Link
-                      to="/checkout"
-                      className="btn-primary w-full flex items-center justify-center mb-4"
-                    >
-                      <span>Proceed to Checkout</span>
-                      <ArrowRight size={18} className="ml-2" />
-                    </Link>
-                  </motion.div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Tax (8%)</span>
+                    <span>${tax.toFixed(2)}</span>
+                  </div>
                   
-                  <Link
-                    to="/menu"
-                    className="text-restaurant-green font-medium flex items-center justify-center hover:underline"
-                  >
-                    <ArrowRight size={16} className="mr-1 transform rotate-180" />
-                    <span>Continue Shopping</span>
-                  </Link>
+                  <div className="border-t border-gray-200 pt-4 flex justify-between font-semibold text-lg">
+                    <span>Total</span>
+                    <span>${total.toFixed(2)}</span>
+                  </div>
                 </div>
-              </AnimatedSection>
+                
+                <CustomButton
+                  className="w-full justify-center mt-6"
+                  onClick={() => navigate('/checkout')}
+                >
+                  Proceed to Checkout
+                  <ArrowRight size={16} className="ml-2" />
+                </CustomButton>
+                
+                <div className="mt-6 text-xs text-gray-500 text-center">
+                  <p>Free delivery for orders over $50</p>
+                  <p className="mt-2">We accept all major credit cards, PayPal and Apple Pay</p>
+                </div>
+              </div>
             </div>
           </div>
-        ) : (
-          <AnimatedSection animation="fadeIn" className="text-center py-16">
-            <div className="mx-auto w-20 h-20 mb-6 text-gray-400">
-              <ShoppingBag size={80} />
-            </div>
-            <h2 className="text-2xl font-semibold mb-4">Your cart is empty</h2>
-            <p className="text-gray-600 mb-8">Looks like you haven't added any items to your cart yet.</p>
-            <Link to="/menu" className="btn-primary">
-              Browse Menu
-            </Link>
-          </AnimatedSection>
-        )}
+        </AnimatedSection>
       </div>
     </div>
   );

@@ -42,7 +42,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   
   // Check if user is logged in
   const isLoggedIn = localStorage.getItem('authToken') !== null;
-  
+  const isAdmin = localStorage.getItem('adminToken') !== null;
+
   useEffect(() => {
     const handleScroll = () => {
       const isScrolled = window.scrollY > 10;
@@ -139,9 +140,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 Login
               </CustomButton>
             )}
-            <CustomButton size="sm" onClick={handleAdminClick} variant="outline">
-              Admin
-            </CustomButton>
+            {isAdmin && (
+              <CustomButton size="sm" onClick={handleAdminClick} variant="outline">
+                Admin
+              </CustomButton>
+            )}
           </motion.div>
 
           {/* Mobile Menu Button */}
@@ -196,11 +199,13 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     <User size={18} className="mr-2" /> Login
                   </button>
                 )}
-                <div className="pt-3">
-                  <CustomButton size="sm" className="w-full justify-center" onClick={handleAdminClick}>
-                    Admin Dashboard
-                  </CustomButton>
-                </div>
+                {isAdmin && (
+                  <div className="pt-3">
+                    <CustomButton size="sm" className="w-full justify-center" onClick={handleAdminClick}>
+                      Admin Dashboard
+                    </CustomButton>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}

@@ -42,7 +42,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ switchToSignup }) => {
         description: "A login notification has been sent to your email",
       });
       
-      navigate('/');
+      navigate('/account');
     }, 1000);
   };
 
