@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, ShoppingCart, User, Search } from 'lucide-react';
 import { CustomButton } from '@/components/ui/custom-button';
@@ -38,6 +38,10 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  
+  // Check if user is logged in
+  const isLoggedIn = localStorage.getItem('authToken') !== null;
   
   useEffect(() => {
     const handleScroll = () => {
@@ -54,6 +58,14 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location]);
+
+  const handleLoginClick = () => {
+    navigate('/auth');
+  };
+  
+  const handleAdminClick = () => {
+    navigate('/admin');
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -118,11 +130,17 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               <ShoppingCart size={20} />
               <span className="absolute -top-1 -right-1 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">2</span>
             </Link>
-            <Link to="/account" className="text-gray-700 hover:text-blue-600 transition-colors">
-              <User size={20} />
-            </Link>
-            <CustomButton size="sm">
-              Order Now
+            {isLoggedIn ? (
+              <Link to="/account" className="text-gray-700 hover:text-blue-600 transition-colors">
+                <User size={20} />
+              </Link>
+            ) : (
+              <CustomButton size="sm" onClick={handleLoginClick}>
+                Login
+              </CustomButton>
+            )}
+            <CustomButton size="sm" onClick={handleAdminClick} variant="outline">
+              Admin
             </CustomButton>
           </motion.div>
 
@@ -163,15 +181,24 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     {link.name}
                   </Link>
                 ))}
-                <Link 
-                  to="/account" 
-                  className="text-gray-700 hover:text-blue-600 transition-colors duration-300 py-2 border-b border-gray-100 flex items-center"
-                >
-                  <User size={18} className="mr-2" /> My Account
-                </Link>
+                {isLoggedIn ? (
+                  <Link 
+                    to="/account" 
+                    className="text-gray-700 hover:text-blue-600 transition-colors duration-300 py-2 border-b border-gray-100 flex items-center"
+                  >
+                    <User size={18} className="mr-2" /> My Account
+                  </Link>
+                ) : (
+                  <button 
+                    onClick={handleLoginClick}
+                    className="text-gray-700 hover:text-blue-600 transition-colors duration-300 py-2 border-b border-gray-100 flex items-center"
+                  >
+                    <User size={18} className="mr-2" /> Login
+                  </button>
+                )}
                 <div className="pt-3">
-                  <CustomButton size="sm" className="w-full justify-center">
-                    Order Now
+                  <CustomButton size="sm" className="w-full justify-center" onClick={handleAdminClick}>
+                    Admin Dashboard
                   </CustomButton>
                 </div>
               </div>
