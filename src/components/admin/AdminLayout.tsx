@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -13,12 +13,15 @@ import {
   LogOut,
   User,
   ChevronDown,
-  Bell
+  Bell,
+  Tag
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -26,18 +29,30 @@ const AdminLayout = () => {
   const menuItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
     { name: 'Menu Management', path: '/admin/menu', icon: FileText },
+    { name: 'Category Management', path: '/admin/categories', icon: Tag },
     { name: 'Order Management', path: '/admin/orders', icon: ShoppingCart },
     { name: 'Gallery Management', path: '/admin/gallery', icon: Image },
     { name: 'Settings', path: '/admin/settings', icon: Settings },
   ];
   
+  useEffect(() => {
+    // Check if admin is logged in
+    const token = localStorage.getItem('adminToken');
+    if (!token) {
+      navigate('/admin/login');
+    } else {
+      setIsAdmin(true);
+    }
+  }, [navigate]);
+
   const handleLogout = () => {
     // Handle logout logic here
+    localStorage.removeItem('adminToken');
     toast({
       title: "Logged Out",
       description: "You have been logged out successfully",
     });
-    navigate('/auth');
+    navigate('/admin/login');
   };
   
   return (
@@ -122,6 +137,7 @@ const AdminLayout = () => {
               <div className="relative">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
+                  onClick={() => setProfileOpen(!profileOpen)}
                   className="flex items-center text-gray-700 hover:text-gray-900"
                 >
                   <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-gray-700">
@@ -130,6 +146,27 @@ const AdminLayout = () => {
                   <span className="ml-2 mr-1 hidden sm:block">Admin User</span>
                   <ChevronDown size={16} />
                 </motion.button>
+
+                {profileOpen && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50"
+                  >
+                    <Link to="/admin/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      Your Profile
+                    </Link>
+                    <Link to="/admin/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      Settings
+                    </Link>
+                    <button 
+                      onClick={handleLogout}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Sign out
+                    </button>
+                  </motion.div>
+                )}
               </div>
             </div>
           </div>
@@ -137,7 +174,7 @@ const AdminLayout = () => {
         
         {/* Page content */}
         <main className="flex-1 overflow-y-auto bg-gray-100">
-          <Outlet />
+          {isAdmin ? <Outlet /> : <div className="p-8 text-center">Loading...</div>}
         </main>
       </div>
       

@@ -36,6 +36,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ switchToSignup }) => {
         description: "Welcome back to DistinctGyrro",
       });
       
+      // Send email notification (mock)
+      toast({
+        title: "Security Alert",
+        description: "A login notification has been sent to your email",
+      });
+      
       navigate('/');
     }, 1000);
   };
