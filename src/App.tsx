@@ -18,6 +18,10 @@ import NotFound from "./pages/NotFound";
 import AdminLayout from "./components/admin/AdminLayout";
 import Dashboard from "./pages/Admin/Dashboard";
 import MenuManager from "./pages/Admin/MenuManager";
+import OrderManager from "./pages/Admin/OrderManager";
+import GalleryManager from "./pages/Admin/GalleryManager";
+import AdminSettings from "./pages/Admin/AdminSettings";
+import AdminAuth from "./pages/Admin/AdminAuth";
 
 const queryClient = new QueryClient();
 
@@ -37,11 +41,16 @@ const App = () => (
           <Route path="/contact" element={<Layout><Contact /></Layout>} />
           <Route path="/auth" element={<Auth />} />
           
+          {/* Admin Auth Route */}
+          <Route path="/admin/login" element={<AdminAuth />} />
+          
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="menu" element={<MenuManager />} />
-            {/* Add more admin routes later */}
+            <Route path="orders" element={<OrderManager />} />
+            <Route path="gallery" element={<GalleryManager />} />
+            <Route path="settings" element={<AdminSettings />} />
           </Route>
           
           <Route path="*" element={<NotFound />} />
