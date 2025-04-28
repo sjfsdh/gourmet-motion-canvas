@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, ShoppingBag, CreditCard, Heart, Settings, LogOut, Home, Lock } from 'lucide-react';
@@ -444,7 +443,7 @@ const Account = () => {
                         
                         <div className="border-t border-gray-200 pt-6">
                           <h3 className="font-medium mb-4 text-red-600">Danger Zone</h3>
-                          <CustomButton variant="destructive">
+                          <CustomButton variant="outline" className="text-red-500 border-red-500 hover:bg-red-50">
                             Delete Account
                           </CustomButton>
                         </div>
