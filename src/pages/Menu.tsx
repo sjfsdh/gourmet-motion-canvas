@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import AnimatedSection from '@/components/animations/AnimatedSection';
@@ -147,9 +148,31 @@ const Menu: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [displayItems, setDisplayItems] = useState([]);
   const { toast } = useToast();
   
-  const handleAddToCart = (item: typeof menuItems[0]) => {
+  // When adding to cart, update localStorage
+  const handleAddToCart = (item) => {
+    // Get existing cart from localStorage or initialize empty array
+    const existingCart = JSON.parse(localStorage.getItem('cart') || '[]');
+    
+    // Check if item is already in cart
+    const itemIndex = existingCart.findIndex(cartItem => cartItem.id === item.id);
+    
+    if (itemIndex !== -1) {
+      // Item exists, increment quantity
+      existingCart[itemIndex].quantity += 1;
+    } else {
+      // Item does not exist, add new item with quantity 1
+      existingCart.push({
+        ...item,
+        quantity: 1
+      });
+    }
+    
+    // Save updated cart to localStorage
+    localStorage.setItem('cart', JSON.stringify(existingCart));
+    
     toast({
       title: "Added to Cart",
       description: `${item.name} has been added to your cart.`,
@@ -157,12 +180,21 @@ const Menu: React.FC = () => {
   };
 
   // Filter menu items by active category and search term
-  const filteredItems = menuItems.filter(item => {
-    const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         item.description.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  useEffect(() => {
+    const filtered = menuItems.filter(item => {
+      const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
+      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           item.description.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesSearch && matchesCategory;
+    });
+    
+    setDisplayItems(filtered);
+  }, [activeCategory, searchTerm]);
+
+  // Ensure items are displayed when the component first loads
+  useEffect(() => {
+    setDisplayItems(menuItems);
+  }, []);
 
   // Scroll to top when category changes
   useEffect(() => {
@@ -225,54 +257,42 @@ const Menu: React.FC = () => {
 
           <div className="flex-grow">
             <AnimatedSection animation="fadeIn">
-              {filteredItems.length > 0 ? (
-                <>
-                  {/* Featured items section */}
-                  {activeCategory === 'all' && (
-                    <div className="mb-10">
-                      <MenuGrid
-                        items={filteredItems}
-                        activeCategory={activeCategory}
-                        onAddToCart={handleAddToCart}
-                        onClearFilters={handleClearFilters}
-                        showFeatured={true}
-                      />
-                    </div>
-                  )}
+              {activeCategory === 'all' && (
+                <div className="mb-10">
+                  <MenuGrid
+                    items={displayItems}
+                    activeCategory={activeCategory}
+                    onAddToCart={handleAddToCart}
+                    onClearFilters={handleClearFilters}
+                    showFeatured={true}
+                  />
+                </div>
+              )}
 
-                  {/* Regular menu items */}
-                  <motion.div
-                    key={activeCategory + searchTerm}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <h2 className="text-2xl font-bold mb-6 flex items-center">
-                      <span className="border-b-2 border-restaurant-terracotta pb-1">
-                        {activeCategory === 'all' ? 'All Menu Items' : categories.find(cat => cat.id === activeCategory)?.name}
-                      </span>
-                      <span className="ml-3 bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs">
-                        {filteredItems.filter(item => activeCategory === 'all' ? !item.featured : true).length} items
-                      </span>
-                    </h2>
-                    
-                    <MenuGrid
-                      items={filteredItems}
-                      activeCategory={activeCategory}
-                      onAddToCart={handleAddToCart}
-                      onClearFilters={handleClearFilters}
-                    />
-                  </motion.div>
-                </>
-              ) : (
+              {/* Regular menu items */}
+              <motion.div
+                key={activeCategory + searchTerm}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <h2 className="text-2xl font-bold mb-6 flex items-center">
+                  <span className="border-b-2 border-restaurant-terracotta pb-1">
+                    {activeCategory === 'all' ? 'All Menu Items' : categories.find(cat => cat.id === activeCategory)?.name}
+                  </span>
+                  <span className="ml-3 bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs">
+                    {displayItems.filter(item => activeCategory === 'all' ? !item.featured : true).length} items
+                  </span>
+                </h2>
+                
                 <MenuGrid
-                  items={[]}
+                  items={displayItems}
                   activeCategory={activeCategory}
                   onAddToCart={handleAddToCart}
                   onClearFilters={handleClearFilters}
                 />
-              )}
+              </motion.div>
             </AnimatedSection>
           </div>
         </div>

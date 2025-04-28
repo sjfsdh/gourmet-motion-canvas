@@ -21,9 +21,11 @@ const MenuGrid: React.FC<MenuGridProps> = ({
   onClearFilters,
   showFeatured = false 
 }) => {
-  const filteredItems = showFeatured ? items.filter(item => item.featured) : items.filter(item => !item.featured);
+  const filteredItems = showFeatured ? items.filter(item => item.featured) : items.filter(item => 
+    activeCategory === 'all' || item.category === activeCategory
+  );
   
-  if (items.length === 0) {
+  if (filteredItems.length === 0) {
     return (
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
@@ -59,7 +61,7 @@ const MenuGrid: React.FC<MenuGridProps> = ({
       
       <motion.div 
         layout
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
       >
         <AnimatePresence>
           {filteredItems.map((item) => (

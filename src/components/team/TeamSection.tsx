@@ -52,7 +52,7 @@ const TeamSection: React.FC = () => {
           </div>
         </AnimatedSection>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           <StaggeredItems animation="fadeIn">
             {teamMembers.map((member) => (
               <TeamMemberCard key={member.id} {...member} />
