@@ -20,11 +20,14 @@ const MenuGrid: React.FC<MenuGridProps> = ({
   onClearFilters,
   showFeatured = false 
 }) => {
-  const filteredItems = showFeatured ? items.filter(item => item.featured) : items.filter(item => 
-    activeCategory === 'all' || item.category === activeCategory
-  );
+  // Only filter if we have items
+  const filteredItems = items && items.length > 0 ? (
+    showFeatured ? 
+      items.filter(item => item.featured) : 
+      items.filter(item => activeCategory === 'all' || item.category === activeCategory)
+  ) : [];
   
-  if (filteredItems.length === 0) {
+  if (!filteredItems || filteredItems.length === 0) {
     return (
       <motion.div 
         initial={{ opacity: 0, y: 20 }}

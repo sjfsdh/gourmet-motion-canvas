@@ -2,10 +2,19 @@
 import { query } from '../config/database';
 import { initializeMenuItemsTable } from './menuService';
 
+// Check if we're in a browser environment
+const isBrowser = typeof window !== 'undefined' && window.document;
+
 // Initialize all required database tables
 export const initializeDatabase = async (): Promise<void> => {
   try {
     console.log('Starting database initialization...');
+    
+    // Skip actual table creation in browser environment
+    if (isBrowser) {
+      console.log('Browser environment detected, skipping actual database initialization');
+      return;
+    }
     
     // Create users table
     await query(`
@@ -75,7 +84,7 @@ export const seedDatabaseIfEmpty = async (): Promise<void> => {
     // Check if menu_items table is empty
     const menuItems = await query('SELECT COUNT(*) FROM menu_items');
     
-    if (parseInt(menuItems[0].count) === 0) {
+    if (parseInt(menuItems[0]?.count || '0') === 0) {
       console.log('Seeding menu items...');
       
       // Sample menu items

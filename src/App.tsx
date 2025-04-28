@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -60,8 +59,15 @@ const DatabaseInitializer = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const init = async () => {
-      await initDB();
-      setInitialized(true);
+      try {
+        await initDB();
+      } catch (error) {
+        console.error("Database initialization failed, continuing with app:", error);
+      } finally {
+        // Always set to initialized, even if there was an error
+        // This ensures the app continues to work in browser environments
+        setInitialized(true);
+      }
     };
 
     init();
@@ -71,7 +77,7 @@ const DatabaseInitializer = ({ children }: { children: React.ReactNode }) => {
     return <div className="flex items-center justify-center h-screen">
       <div className="text-center">
         <div className="animate-spin h-10 w-10 border-4 border-restaurant-green border-t-transparent rounded-full mx-auto mb-4"></div>
-        <p className="text-lg font-medium">Connecting to database...</p>
+        <p className="text-lg font-medium">Loading application...</p>
       </div>
     </div>;
   }
