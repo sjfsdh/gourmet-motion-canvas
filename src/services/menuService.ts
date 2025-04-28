@@ -1,5 +1,6 @@
 
 import { query } from '../config/database';
+import { uploadImage } from '../config/cloudinary';
 
 // Types
 export interface MenuItem {
@@ -10,41 +11,71 @@ export interface MenuItem {
   image: string;
   category: string;
   featured: boolean;
+  inStock?: boolean;
 }
 
 // Get all menu items
-export const getAllMenuItems = async () => {
+export const getAllMenuItems = async (): Promise<MenuItem[]> => {
   try {
-    // This is a placeholder. Once the database is properly set up,
-    // you would replace this with a real database query
     const menuItems = await query('SELECT * FROM menu_items');
     return menuItems;
   } catch (error) {
     console.error('Error fetching menu items:', error);
-    // Return dummy data for now
+    // Return dummy data for now if database connection fails
     return [];
   }
 };
 
 // Get menu item by id
-export const getMenuItemById = async (id: number) => {
+export const getMenuItemById = async (id: number): Promise<MenuItem | null> => {
   try {
     const result = await query('SELECT * FROM menu_items WHERE id = $1', [id]);
-    return result[0];
+    return result.length > 0 ? result[0] : null;
   } catch (error) {
     console.error(`Error fetching menu item ${id}:`, error);
     return null;
   }
 };
 
-// Create a new menu item
-export const createMenuItem = async (item: Omit<MenuItem, 'id'>) => {
+// Get featured menu items
+export const getFeaturedMenuItems = async (): Promise<MenuItem[]> => {
   try {
-    const { name, description, price, image, category, featured } = item;
+    const result = await query('SELECT * FROM menu_items WHERE featured = true');
+    return result;
+  } catch (error) {
+    console.error('Error fetching featured menu items:', error);
+    return [];
+  }
+};
+
+// Get menu items by category
+export const getMenuItemsByCategory = async (category: string): Promise<MenuItem[]> => {
+  try {
+    const result = await query('SELECT * FROM menu_items WHERE category = $1', [category]);
+    return result;
+  } catch (error) {
+    console.error(`Error fetching menu items for category ${category}:`, error);
+    return [];
+  }
+};
+
+// Create a new menu item
+export const createMenuItem = async (item: Omit<MenuItem, 'id'>, imageFile?: string): Promise<MenuItem | null> => {
+  try {
+    let imageUrl = item.image;
+    
+    // If an image file is provided, upload it to Cloudinary
+    if (imageFile) {
+      const uploadResult = await uploadImage(imageFile);
+      imageUrl = uploadResult.secure_url;
+    }
+    
+    const { name, description, price, category, featured } = item;
     const result = await query(
-      'INSERT INTO menu_items (name, description, price, image, category, featured) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [name, description, price, image, category, featured]
+      'INSERT INTO menu_items (name, description, price, image, category, featured, in_stock) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [name, description, price, imageUrl, category, featured, true]
     );
+    
     return result[0];
   } catch (error) {
     console.error('Error creating menu item:', error);
@@ -53,9 +84,18 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id'>) => {
 };
 
 // Update a menu item
-export const updateMenuItem = async (id: number, item: Partial<MenuItem>) => {
+export const updateMenuItem = async (id: number, item: Partial<MenuItem>, imageFile?: string): Promise<MenuItem | null> => {
   try {
-    const { name, description, price, image, category, featured } = item;
+    let imageUrl = item.image;
+    
+    // If an image file is provided, upload it to Cloudinary
+    if (imageFile) {
+      const uploadResult = await uploadImage(imageFile);
+      imageUrl = uploadResult.secure_url;
+      item.image = imageUrl;
+    }
+    
+    const { name, description, price, image, category, featured, inStock } = item;
     const updates = [];
     const values = [];
     let paramCount = 1;
@@ -96,6 +136,12 @@ export const updateMenuItem = async (id: number, item: Partial<MenuItem>) => {
       paramCount++;
     }
     
+    if (inStock !== undefined) {
+      updates.push(`in_stock = $${paramCount}`);
+      values.push(inStock);
+      paramCount++;
+    }
+    
     if (updates.length === 0) {
       return null;
     }
@@ -107,7 +153,7 @@ export const updateMenuItem = async (id: number, item: Partial<MenuItem>) => {
       values
     );
     
-    return result[0];
+    return result.length > 0 ? result[0] : null;
   } catch (error) {
     console.error(`Error updating menu item ${id}:`, error);
     return null;
@@ -115,12 +161,34 @@ export const updateMenuItem = async (id: number, item: Partial<MenuItem>) => {
 };
 
 // Delete a menu item
-export const deleteMenuItem = async (id: number) => {
+export const deleteMenuItem = async (id: number): Promise<boolean> => {
   try {
-    await query('DELETE FROM menu_items WHERE id = $1', [id]);
+    const result = await query('DELETE FROM menu_items WHERE id = $1', [id]);
     return true;
   } catch (error) {
     console.error(`Error deleting menu item ${id}:`, error);
     return false;
+  }
+};
+
+// Create table if it doesn't exist
+export const initializeMenuItemsTable = async (): Promise<void> => {
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS menu_items (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        price DECIMAL(10, 2) NOT NULL,
+        image TEXT,
+        category VARCHAR(100) NOT NULL,
+        featured BOOLEAN DEFAULT FALSE,
+        in_stock BOOLEAN DEFAULT TRUE
+      )
+    `);
+    console.log('Menu items table initialized');
+  } catch (error) {
+    console.error('Error initializing menu_items table:', error);
+    throw error;
   }
 };

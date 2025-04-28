@@ -3,7 +3,6 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search } from 'lucide-react';
 import MenuItem from './MenuItem';
-import StaggeredItems from '@/components/animations/StaggeredItems';
 import { CustomButton } from '@/components/ui/custom-button';
 
 interface MenuGridProps {

@@ -5,7 +5,7 @@ import { v2 as cloudinary } from 'cloudinary';
 cloudinary.config({
   cloud_name: 'demydfzpo',
   api_key: '237256498988464',
-  api_secret: process.env.CLOUDINARY_SECRET || '', // Replace with your actual API secret
+  api_secret: 'asOqy96BSWeBjwjZEd4rTfGMYqc',
 });
 
 // Upload image function

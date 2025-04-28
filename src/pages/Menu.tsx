@@ -6,6 +6,8 @@ import { useToast } from '@/hooks/use-toast';
 import MenuSearch from '@/components/menu/MenuSearch';
 import CategoryFilter from '@/components/menu/CategoryFilter';
 import MenuGrid from '@/components/menu/MenuGrid';
+import { getAllMenuItems } from '@/services/menuService';
+import { useQuery } from '@tanstack/react-query';
 
 // Menu categories
 const categories = [
@@ -17,139 +19,18 @@ const categories = [
   { id: 'drinks', name: 'Drinks' }
 ];
 
-// Menu items
-const menuItems = [
-  {
-    id: 1,
-    name: 'Burrata Salad',
-    description: 'Fresh burrata cheese with heirloom tomatoes, basil, and aged balsamic.',
-    price: 14.99,
-    image: 'https://images.unsplash.com/photo-1505253758473-96b7015fcd40?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    category: 'starters',
-    featured: true
-  },
-  {
-    id: 2,
-    name: 'Truffle Arancini',
-    description: 'Crispy risotto balls with wild mushrooms, truffle, and parmesan.',
-    price: 12.99,
-    image: 'https://images.unsplash.com/photo-1604135307399-86c3e6035d13?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    category: 'starters'
-  },
-  {
-    id: 3,
-    name: 'Beef Carpaccio',
-    description: 'Thinly sliced raw beef with arugula, capers, truffle oil, and parmesan.',
-    price: 16.99,
-    image: 'https://images.unsplash.com/photo-1625944525533-473f1a3d54e7?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    category: 'starters'
-  },
-  {
-    id: 4,
-    name: 'Filet Mignon',
-    description: '8oz prime beef tenderloin with red wine reduction and roasted vegetables.',
-    price: 42.99,
-    image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    category: 'mains',
-    featured: true
-  },
-  {
-    id: 5,
-    name: 'Herb-Crusted Salmon',
-    description: 'Fresh Atlantic salmon with a crispy herb crust and lemon butter sauce.',
-    price: 29.99,
-    image: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    category: 'mains'
-  },
-  {
-    id: 6,
-    name: 'Truffle Risotto',
-    description: 'Creamy arborio rice with wild mushrooms and black truffle.',
-    price: 24.99,
-    image: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    category: 'mains'
-  },
-  {
-    id: 7,
-    name: 'Duck Confit',
-    description: 'Slow-cooked duck leg with crispy skin, served with cherry sauce.',
-    price: 32.99,
-    image: 'https://images.unsplash.com/photo-1518492104633-130d0cc84637?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    category: 'mains'
-  },
-  {
-    id: 8,
-    name: 'Truffle Fries',
-    description: 'Crispy fries tossed with parmesan, truffle oil, and fresh herbs.',
-    price: 9.99,
-    image: 'https://images.unsplash.com/photo-1585109649139-366815a0d713?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    category: 'sides'
-  },
-  {
-    id: 9,
-    name: 'Roasted Brussels Sprouts',
-    description: 'Brussels sprouts roasted with bacon, maple syrup, and balsamic glaze.',
-    price: 10.99,
-    image: 'https://images.unsplash.com/photo-1584615467033-75627d04a3e2?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    category: 'sides'
-  },
-  {
-    id: 10,
-    name: 'Chocolate Fondant',
-    description: 'Warm chocolate cake with a molten center and vanilla ice cream.',
-    price: 12.99,
-    image: 'https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    category: 'desserts',
-    featured: true
-  },
-  {
-    id: 11,
-    name: 'Crème Brûlée',
-    description: 'Classic French custard with caramelized sugar crust.',
-    price: 10.99,
-    image: 'https://images.unsplash.com/photo-1470124182917-cc6e71b22ecc?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    category: 'desserts'
-  },
-  {
-    id: 12,
-    name: 'Tiramisu',
-    description: 'Espresso-soaked ladyfingers layered with mascarpone cream.',
-    price: 11.99,
-    image: 'https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    category: 'desserts'
-  },
-  {
-    id: 13,
-    name: 'Signature Cocktail',
-    description: 'House-infused botanicals with premium spirits and fresh citrus.',
-    price: 14.99,
-    image: 'https://images.unsplash.com/photo-1536935338788-846bb9981813?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    category: 'drinks'
-  },
-  {
-    id: 14,
-    name: 'Aged Wine Collection',
-    description: 'Selection of our finest aged wines from around the world.',
-    price: 18.99,
-    image: 'https://images.unsplash.com/photo-1553361371-9b22f78a0b98?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    category: 'drinks'
-  },
-  {
-    id: 15,
-    name: 'Artisanal Coffee',
-    description: 'Locally roasted premium coffee beans prepared to perfection.',
-    price: 6.99,
-    image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    category: 'drinks'
-  }
-];
-
 const Menu: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [displayItems, setDisplayItems] = useState([]);
   const { toast } = useToast();
+  
+  // Fetch menu items from the database
+  const { data: menuItems, isLoading, error } = useQuery({
+    queryKey: ['menuItems'],
+    queryFn: getAllMenuItems
+  });
   
   // When adding to cart, update localStorage
   const handleAddToCart = (item) => {
@@ -181,6 +62,8 @@ const Menu: React.FC = () => {
 
   // Filter menu items by active category and search term
   useEffect(() => {
+    if (!menuItems) return;
+    
     const filtered = menuItems.filter(item => {
       const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -189,12 +72,14 @@ const Menu: React.FC = () => {
     });
     
     setDisplayItems(filtered);
-  }, [activeCategory, searchTerm]);
+  }, [activeCategory, searchTerm, menuItems]);
 
   // Ensure items are displayed when the component first loads
   useEffect(() => {
-    setDisplayItems(menuItems);
-  }, []);
+    if (menuItems) {
+      setDisplayItems(menuItems);
+    }
+  }, [menuItems]);
 
   // Scroll to top when category changes
   useEffect(() => {
@@ -205,6 +90,25 @@ const Menu: React.FC = () => {
     setSearchTerm('');
     setActiveCategory('all');
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-restaurant-green"></div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold text-red-600 mb-2">Error Loading Menu</h2>
+        <p className="text-gray-600">Please try again later.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-50">
@@ -257,10 +161,10 @@ const Menu: React.FC = () => {
 
           <div className="flex-grow">
             <AnimatedSection animation="fadeIn">
-              {activeCategory === 'all' && (
+              {activeCategory === 'all' && !searchTerm && (
                 <div className="mb-10">
                   <MenuGrid
-                    items={displayItems}
+                    items={menuItems?.filter(item => item.featured) || []}
                     activeCategory={activeCategory}
                     onAddToCart={handleAddToCart}
                     onClearFilters={handleClearFilters}
@@ -282,7 +186,7 @@ const Menu: React.FC = () => {
                     {activeCategory === 'all' ? 'All Menu Items' : categories.find(cat => cat.id === activeCategory)?.name}
                   </span>
                   <span className="ml-3 bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs">
-                    {displayItems.filter(item => activeCategory === 'all' ? !item.featured : true).length} items
+                    {displayItems.filter(item => activeCategory === 'all' ? !item.featured || searchTerm : true).length} items
                   </span>
                 </h2>
                 
@@ -291,6 +195,7 @@ const Menu: React.FC = () => {
                   activeCategory={activeCategory}
                   onAddToCart={handleAddToCart}
                   onClearFilters={handleClearFilters}
+                  showFeatured={false}
                 />
               </motion.div>
             </AnimatedSection>
