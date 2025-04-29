@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import AnimatedSection from '@/components/animations/AnimatedSection';
@@ -31,15 +30,23 @@ const Menu: React.FC = () => {
   const { data: menuItems, isLoading, error } = useQuery({
     queryKey: ['menuItems'],
     queryFn: getAllMenuItems,
-    onSuccess: (data) => {
-      console.log(`Successfully loaded ${data.length} menu items`);
-      setDisplayItems(data);
-    },
-    onError: (error) => {
-      console.error('Failed to fetch menu items:', error);
-      toast.error("Failed to load menu items. Please try again later.");
-    }
+    // Updated to use modern React Query syntax without onSuccess callback
   });
+  
+  // Update displayItems whenever menuItems, activeCategory or searchTerm changes
+  useEffect(() => {
+    if (menuItems) {
+      console.log(`Successfully loaded ${menuItems.length} menu items`);
+      const filtered = menuItems.filter(item => {
+        const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
+        const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            item.description.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesSearch && matchesCategory;
+      });
+      
+      setDisplayItems(filtered);
+    }
+  }, [activeCategory, searchTerm, menuItems]);
   
   // When adding to cart, update localStorage
   const handleAddToCart = (item) => {
@@ -70,20 +77,6 @@ const Menu: React.FC = () => {
       description: `${item.name} has been added to your cart.`,
     });
   };
-
-  // Filter menu items by active category and search term
-  useEffect(() => {
-    if (!menuItems) return;
-    
-    const filtered = menuItems.filter(item => {
-      const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
-      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                           item.description.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesSearch && matchesCategory;
-    });
-    
-    setDisplayItems(filtered);
-  }, [activeCategory, searchTerm, menuItems]);
 
   // Scroll to top when category changes
   useEffect(() => {
