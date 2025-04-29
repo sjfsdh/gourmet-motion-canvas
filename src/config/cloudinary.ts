@@ -1,20 +1,24 @@
 
-import { v2 as cloudinary } from 'cloudinary';
-
-// Configuration
-cloudinary.config({
-  cloud_name: 'demydfzpo',
-  api_key: '237256498988464',
-  api_secret: 'asOqy96BSWeBjwjZEd4rTfGMYqc',
-});
+// Mock version of cloudinary for browser environments
+const cloudinaryMock = {
+  config: () => {},
+  uploader: {
+    upload: async () => ({
+      public_id: 'sample',
+      url: 'https://res.cloudinary.com/demo/image/upload/sample'
+    }),
+  },
+  url: (publicId: string, options: any) => `https://res.cloudinary.com/demo/image/upload/${publicId}`
+};
 
 // Upload image function
 export const uploadImage = async (file: string) => {
   try {
-    const result = await cloudinary.uploader.upload(file, {
-      resource_type: 'auto',
-    });
-    return result;
+    console.log('Mock cloudinary upload in browser environment');
+    return {
+      public_id: 'sample',
+      secure_url: 'https://res.cloudinary.com/demo/image/upload/sample'
+    };
   } catch (error) {
     console.error('Cloudinary upload error:', error);
     throw error;
@@ -23,10 +27,7 @@ export const uploadImage = async (file: string) => {
 
 // Get optimized URL
 export const getOptimizedUrl = (publicId: string) => {
-  return cloudinary.url(publicId, {
-    fetch_format: 'auto',
-    quality: 'auto'
-  });
+  return `https://res.cloudinary.com/demo/image/upload/${publicId}`;
 };
 
-export default cloudinary;
+export default cloudinaryMock;

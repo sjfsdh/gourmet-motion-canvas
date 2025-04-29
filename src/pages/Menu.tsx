@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import AnimatedSection from '@/components/animations/AnimatedSection';
@@ -29,8 +30,7 @@ const Menu: React.FC = () => {
   // Fetch menu items from the database
   const { data: menuItems, isLoading, error } = useQuery({
     queryKey: ['menuItems'],
-    queryFn: getAllMenuItems,
-    // Updated to use modern React Query syntax without onSuccess callback
+    queryFn: getAllMenuItems
   });
   
   // Update displayItems whenever menuItems, activeCategory or searchTerm changes

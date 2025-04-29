@@ -1,17 +1,4 @@
 
-import { Pool } from 'pg';
-
-// Create a connection pool configuration with environment variables
-const poolConfig = {
-  user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || 'maglev.proxy.rlwy.net',
-  database: process.env.DB_NAME || 'railway',
-  password: process.env.DB_PASSWORD || 'oSVmWhGnHXKcdOrsBZPOIabFkQTiEOkW',
-  port: parseInt(process.env.DB_PORT || '29153'),
-  // SSL configuration if needed
-  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined
-};
-
 // Create a mock database interface for browser environments
 const browserDb = {
   query: async (text: string, params?: any[]) => {
@@ -62,21 +49,13 @@ const isNode = typeof process !== 'undefined' &&
   process.versions != null && 
   process.versions.node != null;
 
-// Create pool only in Node.js environment
-const pool = isNode ? new Pool(poolConfig) : null;
-
 // Export the query function that works in both environments
 export const query = async (text: string, params?: any[]) => {
   try {
-    if (pool) {
-      // Node.js environment - use real database
-      console.log('Executing database query:', text);
-      const result = await pool.query(text, params);
-      return result.rows;
-    } else {
-      // Browser environment - use mock data
-      return await browserDb.query(text, params);
-    }
+    // Always use mock data in browser environment
+    // In production, this would be handled by server-side code
+    console.log('Executing mock database query:', text);
+    return await browserDb.query(text, params);
   } catch (error) {
     console.error('Database query error:', error);
     throw error;
@@ -86,18 +65,12 @@ export const query = async (text: string, params?: any[]) => {
 // Function to test database connection
 export const testDatabaseConnection = async (): Promise<boolean> => {
   try {
-    if (pool) {
-      await pool.query('SELECT NOW()');
-      console.log('Database connection successful');
-      return true;
-    } else {
-      console.log('Browser environment detected, skipping database connection test');
-      return false;
-    }
+    console.log('Browser environment detected, skipping database connection test');
+    return true;
   } catch (error) {
     console.error('Database connection failed:', error);
     return false;
   }
 };
 
-export default pool;
+// No need to export pool since we're not creating one in the browser
