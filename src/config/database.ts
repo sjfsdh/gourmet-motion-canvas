@@ -38,7 +38,9 @@ const browserDb = {
         }
       ];
     } else if (text.includes('SELECT COUNT(*) FROM menu_items')) {
-      return [{ count: '3' }];
+      return [{ count: "3" }];
+    } else if (text.includes('SELECT COUNT(*) FROM users')) {
+      return [{ count: "0" }];
     }
     return [];
   },

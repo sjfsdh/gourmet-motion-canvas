@@ -1,6 +1,7 @@
 
 import { query } from '../config/database';
 import { uploadImage } from '../config/cloudinary';
+import { supabase } from '../integrations/supabase/client';
 
 // Types
 export interface MenuItem {
@@ -14,14 +15,21 @@ export interface MenuItem {
   inStock?: boolean;
 }
 
+interface CountResult {
+  count: string;
+}
+
 // Get all menu items
 export const getAllMenuItems = async (): Promise<MenuItem[]> => {
   try {
     const menuItems = await query('SELECT * FROM menu_items');
-    return menuItems;
+    // Check if the result is valid menu items
+    if (menuItems.length > 0 && 'name' in menuItems[0]) {
+      return menuItems as MenuItem[];
+    }
+    return [];
   } catch (error) {
     console.error('Error fetching menu items:', error);
-    // Return dummy data for now if database connection fails
     return [];
   }
 };
@@ -30,7 +38,11 @@ export const getAllMenuItems = async (): Promise<MenuItem[]> => {
 export const getMenuItemById = async (id: number): Promise<MenuItem | null> => {
   try {
     const result = await query('SELECT * FROM menu_items WHERE id = $1', [id]);
-    return result.length > 0 ? result[0] : null;
+    // Check if the result is a valid menu item
+    if (result.length > 0 && 'name' in result[0]) {
+      return result[0] as MenuItem;
+    }
+    return null;
   } catch (error) {
     console.error(`Error fetching menu item ${id}:`, error);
     return null;
@@ -41,7 +53,11 @@ export const getMenuItemById = async (id: number): Promise<MenuItem | null> => {
 export const getFeaturedMenuItems = async (): Promise<MenuItem[]> => {
   try {
     const result = await query('SELECT * FROM menu_items WHERE featured = true');
-    return result;
+    // Check if the results are valid menu items
+    if (result.length > 0 && 'name' in result[0]) {
+      return result as MenuItem[];
+    }
+    return [];
   } catch (error) {
     console.error('Error fetching featured menu items:', error);
     return [];
@@ -52,7 +68,11 @@ export const getFeaturedMenuItems = async (): Promise<MenuItem[]> => {
 export const getMenuItemsByCategory = async (category: string): Promise<MenuItem[]> => {
   try {
     const result = await query('SELECT * FROM menu_items WHERE category = $1', [category]);
-    return result;
+    // Check if the results are valid menu items
+    if (result.length > 0 && 'name' in result[0]) {
+      return result as MenuItem[];
+    }
+    return [];
   } catch (error) {
     console.error(`Error fetching menu items for category ${category}:`, error);
     return [];
@@ -76,7 +96,11 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id'>, imageFile?: str
       [name, description, price, imageUrl, category, featured, true]
     );
     
-    return result[0];
+    // Check if the result is a valid menu item
+    if (result.length > 0 && 'name' in result[0]) {
+      return result[0] as MenuItem;
+    }
+    return null;
   } catch (error) {
     console.error('Error creating menu item:', error);
     return null;
@@ -153,7 +177,11 @@ export const updateMenuItem = async (id: number, item: Partial<MenuItem>, imageF
       values
     );
     
-    return result.length > 0 ? result[0] : null;
+    // Check if the result is a valid menu item
+    if (result.length > 0 && 'name' in result[0]) {
+      return result[0] as MenuItem;
+    }
+    return null;
   } catch (error) {
     console.error(`Error updating menu item ${id}:`, error);
     return null;

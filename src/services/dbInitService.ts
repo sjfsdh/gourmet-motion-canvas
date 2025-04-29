@@ -6,6 +6,11 @@ import { toast } from "sonner";
 // Check if we're in a browser environment
 const isBrowser = typeof window !== 'undefined' && window.document;
 
+// Interface for count result
+interface CountResult {
+  count: string;
+}
+
 // Initialize all required database tables
 export const initializeDatabase = async (): Promise<void> => {
   try {
@@ -99,76 +104,82 @@ export const seedDatabaseIfEmpty = async (): Promise<void> => {
     // Check if menu_items table is empty
     const menuItems = await query('SELECT COUNT(*) FROM menu_items');
     
-    if (parseInt(menuItems[0]?.count || '0') === 0) {
-      console.log('Seeding menu items...');
-      
-      // Sample menu items
-      const sampleItems = [
-        {
-          name: 'Burrata Salad',
-          description: 'Fresh burrata cheese with heirloom tomatoes, basil, and aged balsamic.',
-          price: 14.99,
-          image: 'https://images.unsplash.com/photo-1505253758473-96b7015fcd40?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-          category: 'starters',
-          featured: true
-        },
-        {
-          name: 'Filet Mignon',
-          description: '8oz prime beef tenderloin with red wine reduction and roasted vegetables.',
-          price: 42.99,
-          image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-          category: 'mains',
-          featured: true
-        },
-        {
-          name: 'Chocolate Fondant',
-          description: 'Warm chocolate cake with a molten center and vanilla ice cream.',
-          price: 12.99,
-          image: 'https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-          category: 'desserts',
-          featured: true
-        },
-        {
-          name: 'Caprese Bruschetta',
-          description: 'Toasted ciabatta topped with fresh tomatoes, mozzarella, and basil.',
-          price: 11.99,
-          image: 'https://images.unsplash.com/photo-1572695157366-5e585ab2b69f?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-          category: 'starters',
-          featured: false
-        },
-        {
-          name: 'Grilled Salmon',
-          description: 'Fresh Atlantic salmon with lemon butter sauce and seasonal vegetables.',
-          price: 28.99,
-          image: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-          category: 'mains',
-          featured: false
+    if (menuItems.length > 0 && 'count' in menuItems[0]) {
+      const countResult = menuItems[0] as CountResult;
+      if (parseInt(countResult.count || '0') === 0) {
+        console.log('Seeding menu items...');
+        
+        // Sample menu items
+        const sampleItems = [
+          {
+            name: 'Burrata Salad',
+            description: 'Fresh burrata cheese with heirloom tomatoes, basil, and aged balsamic.',
+            price: 14.99,
+            image: 'https://images.unsplash.com/photo-1505253758473-96b7015fcd40?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+            category: 'starters',
+            featured: true
+          },
+          {
+            name: 'Filet Mignon',
+            description: '8oz prime beef tenderloin with red wine reduction and roasted vegetables.',
+            price: 42.99,
+            image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+            category: 'mains',
+            featured: true
+          },
+          {
+            name: 'Chocolate Fondant',
+            description: 'Warm chocolate cake with a molten center and vanilla ice cream.',
+            price: 12.99,
+            image: 'https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+            category: 'desserts',
+            featured: true
+          },
+          {
+            name: 'Caprese Bruschetta',
+            description: 'Toasted ciabatta topped with fresh tomatoes, mozzarella, and basil.',
+            price: 11.99,
+            image: 'https://images.unsplash.com/photo-1572695157366-5e585ab2b69f?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+            category: 'starters',
+            featured: false
+          },
+          {
+            name: 'Grilled Salmon',
+            description: 'Fresh Atlantic salmon with lemon butter sauce and seasonal vegetables.',
+            price: 28.99,
+            image: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+            category: 'mains',
+            featured: false
+          }
+        ];
+        
+        for (const item of sampleItems) {
+          await query(
+            'INSERT INTO menu_items (name, description, price, image, category, featured, in_stock) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+            [item.name, item.description, item.price, item.image, item.category, item.featured, true]
+          );
         }
-      ];
-      
-      for (const item of sampleItems) {
-        await query(
-          'INSERT INTO menu_items (name, description, price, image, category, featured, in_stock) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-          [item.name, item.description, item.price, item.image, item.category, item.featured, true]
-        );
+        
+        console.log('Sample menu items added.');
       }
-      
-      console.log('Sample menu items added.');
     }
     
     // Check if users table is empty
     const users = await query('SELECT COUNT(*) FROM users');
     
-    if (parseInt(users[0]?.count || '0') === 0) {
-      console.log('Seeding admin user...');
-      
-      // Add admin user (password should be hashed in production)
-      await query(
-        'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4)',
-        ['Admin User', 'admin@restaurant.com', 'admin123', 'admin']
-      );
-      
-      console.log('Admin user added.');
+    if (users.length > 0 && 'count' in users[0]) {
+      const countResult = users[0] as CountResult;
+      if (parseInt(countResult.count || '0') === 0) {
+        console.log('Seeding admin user...');
+        
+        // Add admin user (password should be hashed in production)
+        await query(
+          'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4)',
+          ['Admin User', 'admin@restaurant.com', 'admin123', 'admin']
+        );
+        
+        console.log('Admin user added.');
+      }
     }
     
   } catch (error) {
