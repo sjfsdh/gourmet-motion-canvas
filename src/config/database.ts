@@ -1,21 +1,21 @@
 
 import { Pool } from 'pg';
 
-// Create a connection pool configuration
+// Create a connection pool configuration with environment variables
 const poolConfig = {
-  user: 'postgres',
-  host: 'maglev.proxy.rlwy.net',
-  database: 'railway',
-  password: 'oSVmWhGnHXKcdOrsBZPOIabFkQTiEOkW',
-  port: 29153,
-  // Add SSL if needed for your railway deployment
-  // ssl: { rejectUnauthorized: false }
+  user: process.env.DB_USER || 'postgres',
+  host: process.env.DB_HOST || 'maglev.proxy.rlwy.net',
+  database: process.env.DB_NAME || 'railway',
+  password: process.env.DB_PASSWORD || 'oSVmWhGnHXKcdOrsBZPOIabFkQTiEOkW',
+  port: parseInt(process.env.DB_PORT || '29153'),
+  // SSL configuration if needed
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined
 };
 
 // Create a mock database interface for browser environments
 const browserDb = {
   query: async (text: string, params?: any[]) => {
-    console.warn('Database query attempted in browser environment:', text);
+    console.log('Browser environment detected, using mock data for:', text);
     // Return mock data based on common query patterns
     if (text.includes('SELECT * FROM menu_items')) {
       return [
@@ -26,7 +26,8 @@ const browserDb = {
           price: 14.99,
           image: 'https://images.unsplash.com/photo-1505253758473-96b7015fcd40?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
           category: 'starters',
-          featured: true
+          featured: true,
+          in_stock: true
         },
         {
           id: 2,
@@ -35,7 +36,8 @@ const browserDb = {
           price: 42.99,
           image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
           category: 'mains',
-          featured: true
+          featured: true,
+          in_stock: true
         },
         {
           id: 3,
@@ -44,9 +46,12 @@ const browserDb = {
           price: 12.99,
           image: 'https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
           category: 'desserts',
-          featured: true
+          featured: true,
+          in_stock: true
         }
       ];
+    } else if (text.includes('SELECT COUNT(*) FROM menu_items')) {
+      return [{ count: '3' }];
     }
     return [];
   },
@@ -65,6 +70,7 @@ export const query = async (text: string, params?: any[]) => {
   try {
     if (pool) {
       // Node.js environment - use real database
+      console.log('Executing database query:', text);
       const result = await pool.query(text, params);
       return result.rows;
     } else {
@@ -74,6 +80,23 @@ export const query = async (text: string, params?: any[]) => {
   } catch (error) {
     console.error('Database query error:', error);
     throw error;
+  }
+};
+
+// Function to test database connection
+export const testDatabaseConnection = async (): Promise<boolean> => {
+  try {
+    if (pool) {
+      await pool.query('SELECT NOW()');
+      console.log('Database connection successful');
+      return true;
+    } else {
+      console.log('Browser environment detected, skipping database connection test');
+      return false;
+    }
+  } catch (error) {
+    console.error('Database connection failed:', error);
+    return false;
   }
 };
 

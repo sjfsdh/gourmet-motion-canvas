@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search } from 'lucide-react';
+import { Search, Loader2 } from 'lucide-react';
 import MenuItem from './MenuItem';
 import { CustomButton } from '@/components/ui/custom-button';
 
@@ -11,6 +11,8 @@ interface MenuGridProps {
   onAddToCart: (item: any) => void;
   onClearFilters: () => void;
   showFeatured?: boolean;
+  isLoading?: boolean;
+  error?: any;
 }
 
 const MenuGrid: React.FC<MenuGridProps> = ({ 
@@ -18,8 +20,46 @@ const MenuGrid: React.FC<MenuGridProps> = ({
   activeCategory, 
   onAddToCart, 
   onClearFilters,
-  showFeatured = false 
+  showFeatured = false,
+  isLoading = false,
+  error = null
 }) => {
+  // Display loading state
+  if (isLoading) {
+    return (
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex flex-col items-center justify-center py-12"
+      >
+        <Loader2 size={40} className="animate-spin text-restaurant-green mb-4" />
+        <p className="text-gray-600">Loading menu items...</p>
+      </motion.div>
+    );
+  }
+  
+  // Display error state
+  if (error) {
+    return (
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="text-center py-12"
+      >
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
+          <Search size={24} className="text-red-500" />
+        </div>
+        <h3 className="text-xl font-medium mb-2 text-red-500">Error Loading Menu</h3>
+        <p className="text-gray-500 mb-6">We encountered a problem while loading the menu. Please try again.</p>
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+          <CustomButton onClick={() => window.location.reload()}>
+            Refresh Page
+          </CustomButton>
+        </motion.div>
+      </motion.div>
+    );
+  }
+  
   // Only filter if we have items
   const filteredItems = items && items.length > 0 ? (
     showFeatured ? 

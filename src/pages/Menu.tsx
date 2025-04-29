@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import AnimatedSection from '@/components/animations/AnimatedSection';
 import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import MenuSearch from '@/components/menu/MenuSearch';
 import CategoryFilter from '@/components/menu/CategoryFilter';
 import MenuGrid from '@/components/menu/MenuGrid';
@@ -24,12 +25,20 @@ const Menu: React.FC = () => {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [displayItems, setDisplayItems] = useState([]);
-  const { toast } = useToast();
+  const { toast: customToast } = useToast();
   
   // Fetch menu items from the database
   const { data: menuItems, isLoading, error } = useQuery({
     queryKey: ['menuItems'],
-    queryFn: getAllMenuItems
+    queryFn: getAllMenuItems,
+    onSuccess: (data) => {
+      console.log(`Successfully loaded ${data.length} menu items`);
+      setDisplayItems(data);
+    },
+    onError: (error) => {
+      console.error('Failed to fetch menu items:', error);
+      toast.error("Failed to load menu items. Please try again later.");
+    }
   });
   
   // When adding to cart, update localStorage
@@ -43,18 +52,20 @@ const Menu: React.FC = () => {
     if (itemIndex !== -1) {
       // Item exists, increment quantity
       existingCart[itemIndex].quantity += 1;
+      toast.success(`Added another ${item.name} to your cart`);
     } else {
       // Item does not exist, add new item with quantity 1
       existingCart.push({
         ...item,
         quantity: 1
       });
+      toast.success(`Added ${item.name} to your cart`);
     }
     
     // Save updated cart to localStorage
     localStorage.setItem('cart', JSON.stringify(existingCart));
     
-    toast({
+    customToast({
       title: "Added to Cart",
       description: `${item.name} has been added to your cart.`,
     });
@@ -74,13 +85,6 @@ const Menu: React.FC = () => {
     setDisplayItems(filtered);
   }, [activeCategory, searchTerm, menuItems]);
 
-  // Ensure items are displayed when the component first loads
-  useEffect(() => {
-    if (menuItems) {
-      setDisplayItems(menuItems);
-    }
-  }, [menuItems]);
-
   // Scroll to top when category changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -90,25 +94,6 @@ const Menu: React.FC = () => {
     setSearchTerm('');
     setActiveCategory('all');
   };
-
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-restaurant-green"></div>
-      </div>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <h2 className="text-2xl font-bold text-red-600 mb-2">Error Loading Menu</h2>
-        <p className="text-gray-600">Please try again later.</p>
-      </div>
-    );
-  }
 
   return (
     <div className="bg-gray-50">
@@ -161,7 +146,7 @@ const Menu: React.FC = () => {
 
           <div className="flex-grow">
             <AnimatedSection animation="fadeIn">
-              {activeCategory === 'all' && !searchTerm && (
+              {activeCategory === 'all' && !searchTerm && !isLoading && !error && (
                 <div className="mb-10">
                   <MenuGrid
                     items={menuItems?.filter(item => item.featured) || []}
@@ -169,6 +154,8 @@ const Menu: React.FC = () => {
                     onAddToCart={handleAddToCart}
                     onClearFilters={handleClearFilters}
                     showFeatured={true}
+                    isLoading={isLoading}
+                    error={error}
                   />
                 </div>
               )}
@@ -185,9 +172,11 @@ const Menu: React.FC = () => {
                   <span className="border-b-2 border-restaurant-terracotta pb-1">
                     {activeCategory === 'all' ? 'All Menu Items' : categories.find(cat => cat.id === activeCategory)?.name}
                   </span>
-                  <span className="ml-3 bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs">
-                    {displayItems.filter(item => activeCategory === 'all' ? !item.featured || searchTerm : true).length} items
-                  </span>
+                  {!isLoading && !error && (
+                    <span className="ml-3 bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs">
+                      {displayItems.length} items
+                    </span>
+                  )}
                 </h2>
                 
                 <MenuGrid
@@ -196,6 +185,8 @@ const Menu: React.FC = () => {
                   onAddToCart={handleAddToCart}
                   onClearFilters={handleClearFilters}
                   showFeatured={false}
+                  isLoading={isLoading}
+                  error={error}
                 />
               </motion.div>
             </AnimatedSection>
