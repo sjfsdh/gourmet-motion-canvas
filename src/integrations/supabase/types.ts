@@ -9,7 +9,264 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      categories: {
+        Row: {
+          created_at: string | null
+          display_name: string
+          id: number
+          name: string
+          order_index: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          display_name: string
+          id?: number
+          name: string
+          order_index?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string
+          id?: number
+          name?: string
+          order_index?: number | null
+        }
+        Relationships: []
+      }
+      gallery: {
+        Row: {
+          created_at: string | null
+          featured: boolean | null
+          id: number
+          title: string
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          featured?: boolean | null
+          id?: number
+          title: string
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          featured?: boolean | null
+          id?: number
+          title?: string
+          url?: string
+        }
+        Relationships: []
+      }
+      menu_items: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          featured: boolean | null
+          id: number
+          image: string | null
+          in_stock: boolean | null
+          name: string
+          price: number
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description?: string | null
+          featured?: boolean | null
+          id?: number
+          image?: string | null
+          in_stock?: boolean | null
+          name: string
+          price: number
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          featured?: boolean | null
+          id?: number
+          image?: string | null
+          in_stock?: boolean | null
+          name?: string
+          price?: number
+        }
+        Relationships: []
+      }
+      order_items: {
+        Row: {
+          id: number
+          menu_item_id: number | null
+          order_id: number | null
+          price: number
+          quantity: number
+          subtotal: number
+        }
+        Insert: {
+          id?: number
+          menu_item_id?: number | null
+          order_id?: number | null
+          price: number
+          quantity: number
+          subtotal: number
+        }
+        Update: {
+          id?: number
+          menu_item_id?: number | null
+          order_id?: number | null
+          price?: number
+          quantity?: number
+          subtotal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          customer_email: string
+          customer_name: string
+          customer_phone: string | null
+          id: number
+          payment_method: string | null
+          payment_status: string | null
+          status: string | null
+          total: number
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          customer_email: string
+          customer_name: string
+          customer_phone?: string | null
+          id?: number
+          payment_method?: string | null
+          payment_status?: string | null
+          status?: string | null
+          total: number
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          customer_email?: string
+          customer_name?: string
+          customer_phone?: string | null
+          id?: number
+          payment_method?: string | null
+          payment_status?: string | null
+          status?: string | null
+          total?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      settings: {
+        Row: {
+          created_at: string | null
+          id: number
+          opening_hours: string | null
+          restaurant_address: string | null
+          restaurant_email: string | null
+          restaurant_name: string
+          restaurant_phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          opening_hours?: string | null
+          restaurant_address?: string | null
+          restaurant_email?: string | null
+          restaurant_name?: string
+          restaurant_phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          opening_hours?: string | null
+          restaurant_address?: string | null
+          restaurant_email?: string | null
+          restaurant_name?: string
+          restaurant_phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      team_members: {
+        Row: {
+          bio: string | null
+          created_at: string | null
+          id: number
+          image: string | null
+          name: string
+          order_index: number | null
+          position: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string | null
+          id?: number
+          image?: string | null
+          name: string
+          order_index?: number | null
+          position: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string | null
+          id?: number
+          image?: string | null
+          name?: string
+          order_index?: number | null
+          position?: string
+        }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: number
+          name: string
+          password_hash: string
+          role: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: number
+          name: string
+          password_hash: string
+          role?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: number
+          name?: string
+          password_hash?: string
+          role?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

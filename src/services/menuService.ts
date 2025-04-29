@@ -15,17 +15,31 @@ export interface MenuItem {
   inStock?: boolean;
 }
 
-interface CountResult {
+export interface CountResult {
   count: string;
+}
+
+// Type guard to check if object is a MenuItem
+function isMenuItem(obj: any): obj is MenuItem {
+  return obj && 
+    typeof obj.id === 'number' && 
+    typeof obj.name === 'string' &&
+    typeof obj.price === 'number';
+}
+
+// Type guard to check if array contains MenuItems
+function isMenuItemArray(arr: any[]): arr is MenuItem[] {
+  return arr.length === 0 || isMenuItem(arr[0]);
 }
 
 // Get all menu items
 export const getAllMenuItems = async (): Promise<MenuItem[]> => {
   try {
     const menuItems = await query('SELECT * FROM menu_items');
+    
     // Check if the result is valid menu items
-    if (menuItems.length > 0 && 'name' in menuItems[0]) {
-      return menuItems as MenuItem[];
+    if (isMenuItemArray(menuItems)) {
+      return menuItems;
     }
     return [];
   } catch (error) {
@@ -38,9 +52,10 @@ export const getAllMenuItems = async (): Promise<MenuItem[]> => {
 export const getMenuItemById = async (id: number): Promise<MenuItem | null> => {
   try {
     const result = await query('SELECT * FROM menu_items WHERE id = $1', [id]);
+    
     // Check if the result is a valid menu item
-    if (result.length > 0 && 'name' in result[0]) {
-      return result[0] as MenuItem;
+    if (result.length > 0 && isMenuItem(result[0])) {
+      return result[0];
     }
     return null;
   } catch (error) {
@@ -53,9 +68,10 @@ export const getMenuItemById = async (id: number): Promise<MenuItem | null> => {
 export const getFeaturedMenuItems = async (): Promise<MenuItem[]> => {
   try {
     const result = await query('SELECT * FROM menu_items WHERE featured = true');
+    
     // Check if the results are valid menu items
-    if (result.length > 0 && 'name' in result[0]) {
-      return result as MenuItem[];
+    if (isMenuItemArray(result)) {
+      return result;
     }
     return [];
   } catch (error) {
@@ -68,9 +84,10 @@ export const getFeaturedMenuItems = async (): Promise<MenuItem[]> => {
 export const getMenuItemsByCategory = async (category: string): Promise<MenuItem[]> => {
   try {
     const result = await query('SELECT * FROM menu_items WHERE category = $1', [category]);
+    
     // Check if the results are valid menu items
-    if (result.length > 0 && 'name' in result[0]) {
-      return result as MenuItem[];
+    if (isMenuItemArray(result)) {
+      return result;
     }
     return [];
   } catch (error) {
@@ -91,14 +108,24 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id'>, imageFile?: str
     }
     
     const { name, description, price, category, featured } = item;
+    const newItem = {
+      name,
+      description,
+      price,
+      image: imageUrl,
+      category,
+      featured,
+      in_stock: true
+    };
+    
     const result = await query(
       'INSERT INTO menu_items (name, description, price, image, category, featured, in_stock) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [name, description, price, imageUrl, category, featured, true]
+      [newItem]
     );
     
     // Check if the result is a valid menu item
-    if (result.length > 0 && 'name' in result[0]) {
-      return result[0] as MenuItem;
+    if (result.length > 0 && isMenuItem(result[0])) {
+      return result[0];
     }
     return null;
   } catch (error) {
@@ -119,67 +146,29 @@ export const updateMenuItem = async (id: number, item: Partial<MenuItem>, imageF
       item.image = imageUrl;
     }
     
-    const { name, description, price, image, category, featured, inStock } = item;
-    const updates = [];
-    const values = [];
-    let paramCount = 1;
+    // Create update object with only defined fields
+    const updates: any = {};
     
-    if (name !== undefined) {
-      updates.push(`name = $${paramCount}`);
-      values.push(name);
-      paramCount++;
-    }
+    if (item.name !== undefined) updates.name = item.name;
+    if (item.description !== undefined) updates.description = item.description;
+    if (item.price !== undefined) updates.price = item.price;
+    if (item.image !== undefined) updates.image = item.image;
+    if (item.category !== undefined) updates.category = item.category;
+    if (item.featured !== undefined) updates.featured = item.featured;
+    if (item.inStock !== undefined) updates.in_stock = item.inStock;
     
-    if (description !== undefined) {
-      updates.push(`description = $${paramCount}`);
-      values.push(description);
-      paramCount++;
-    }
-    
-    if (price !== undefined) {
-      updates.push(`price = $${paramCount}`);
-      values.push(price);
-      paramCount++;
-    }
-    
-    if (image !== undefined) {
-      updates.push(`image = $${paramCount}`);
-      values.push(image);
-      paramCount++;
-    }
-    
-    if (category !== undefined) {
-      updates.push(`category = $${paramCount}`);
-      values.push(category);
-      paramCount++;
-    }
-    
-    if (featured !== undefined) {
-      updates.push(`featured = $${paramCount}`);
-      values.push(featured);
-      paramCount++;
-    }
-    
-    if (inStock !== undefined) {
-      updates.push(`in_stock = $${paramCount}`);
-      values.push(inStock);
-      paramCount++;
-    }
-    
-    if (updates.length === 0) {
+    if (Object.keys(updates).length === 0) {
       return null;
     }
     
-    values.push(id);
-    
     const result = await query(
-      `UPDATE menu_items SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`,
-      values
+      `UPDATE menu_items SET ${Object.keys(updates).map(key => `${key} = $1`).join(', ')} WHERE id = $2 RETURNING *`,
+      [updates, id]
     );
     
     // Check if the result is a valid menu item
-    if (result.length > 0 && 'name' in result[0]) {
-      return result[0] as MenuItem;
+    if (result.length > 0 && isMenuItem(result[0])) {
+      return result[0];
     }
     return null;
   } catch (error) {
@@ -191,7 +180,7 @@ export const updateMenuItem = async (id: number, item: Partial<MenuItem>, imageF
 // Delete a menu item
 export const deleteMenuItem = async (id: number): Promise<boolean> => {
   try {
-    const result = await query('DELETE FROM menu_items WHERE id = $1', [id]);
+    await query('DELETE FROM menu_items WHERE id = $1', [id]);
     return true;
   } catch (error) {
     console.error(`Error deleting menu item ${id}:`, error);
@@ -199,22 +188,11 @@ export const deleteMenuItem = async (id: number): Promise<boolean> => {
   }
 };
 
-// Create table if it doesn't exist
+// Create table if it doesn't exist - this is now handled by our SQL migration
 export const initializeMenuItemsTable = async (): Promise<void> => {
   try {
-    await query(`
-      CREATE TABLE IF NOT EXISTS menu_items (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        description TEXT,
-        price DECIMAL(10, 2) NOT NULL,
-        image TEXT,
-        category VARCHAR(100) NOT NULL,
-        featured BOOLEAN DEFAULT FALSE,
-        in_stock BOOLEAN DEFAULT TRUE
-      )
-    `);
-    console.log('Menu items table initialized');
+    // This function is now a no-op since we've created the tables with SQL migration
+    console.log('Menu items table already initialized through migration');
   } catch (error) {
     console.error('Error initializing menu_items table:', error);
     throw error;

@@ -1,22 +1,26 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Bell, Lock, Globe, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { CustomButton } from '@/components/ui/custom-button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { getRestaurantSettings, updateRestaurantSettings, RestaurantSettings } from '@/services/settingsService';
 
 const AdminSettings = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("general");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   
-  const [generalSettings, setGeneralSettings] = useState({
-    restaurantName: "DistinctGyrro",
-    restaurantAddress: "123 Main Street, City, Country",
-    restaurantPhone: "+1 (123) 456-7890",
-    restaurantEmail: "info@distinctgyrro.com",
-    openingHours: "Mon-Fri: 11am-10pm, Sat-Sun: 10am-11pm"
+  const [generalSettings, setGeneralSettings] = useState<RestaurantSettings>({
+    id: 1,
+    restaurant_name: "DistinctGyrro",
+    restaurant_address: "123 Main Street, City, Country",
+    restaurant_phone: "+1 (123) 456-7890",
+    restaurant_email: "info@distinctgyrro.com",
+    opening_hours: "Mon-Fri: 11am-10pm, Sat-Sun: 10am-11pm"
   });
   
   const [emailSettings, setEmailSettings] = useState({
@@ -43,11 +47,59 @@ const AdminSettings = () => {
     confirmPassword: ""
   });
 
-  const handleSaveGeneralSettings = () => {
-    toast({
-      title: "Settings Saved",
-      description: "General settings have been updated successfully."
-    });
+  // Fetch restaurant settings when component mounts
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        setLoading(true);
+        const settings = await getRestaurantSettings();
+        
+        if (settings) {
+          setGeneralSettings(settings);
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+        toast({
+          title: "Failed to Load Settings",
+          description: "Could not load restaurant settings. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchSettings();
+  }, [toast]);
+
+  const handleSaveGeneralSettings = async () => {
+    try {
+      setSaving(true);
+      const updated = await updateRestaurantSettings(generalSettings.id, {
+        restaurant_name: generalSettings.restaurant_name,
+        restaurant_address: generalSettings.restaurant_address,
+        restaurant_phone: generalSettings.restaurant_phone,
+        restaurant_email: generalSettings.restaurant_email,
+        opening_hours: generalSettings.opening_hours
+      });
+      
+      if (updated) {
+        setGeneralSettings(updated);
+        toast({
+          title: "Settings Saved",
+          description: "General settings have been updated successfully."
+        });
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast({
+        title: "Failed to Save Settings",
+        description: "Could not save changes. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSaveEmailSettings = () => {
@@ -96,6 +148,14 @@ const AdminSettings = () => {
     });
   };
 
+  if (loading) {
+    return (
+      <div className="p-6 flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-restaurant-green"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
       <div className="mb-8">
@@ -121,8 +181,8 @@ const AdminSettings = () => {
                   </label>
                   <input
                     type="text"
-                    value={generalSettings.restaurantName}
-                    onChange={(e) => setGeneralSettings({...generalSettings, restaurantName: e.target.value})}
+                    value={generalSettings.restaurant_name}
+                    onChange={(e) => setGeneralSettings({...generalSettings, restaurant_name: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
                   />
                 </div>
@@ -133,8 +193,8 @@ const AdminSettings = () => {
                   </label>
                   <textarea
                     rows={3}
-                    value={generalSettings.restaurantAddress}
-                    onChange={(e) => setGeneralSettings({...generalSettings, restaurantAddress: e.target.value})}
+                    value={generalSettings.restaurant_address}
+                    onChange={(e) => setGeneralSettings({...generalSettings, restaurant_address: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
                   />
                 </div>
@@ -146,8 +206,8 @@ const AdminSettings = () => {
                     </label>
                     <input
                       type="text"
-                      value={generalSettings.restaurantPhone}
-                      onChange={(e) => setGeneralSettings({...generalSettings, restaurantPhone: e.target.value})}
+                      value={generalSettings.restaurant_phone}
+                      onChange={(e) => setGeneralSettings({...generalSettings, restaurant_phone: e.target.value})}
                       className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
                     />
                   </div>
@@ -158,8 +218,8 @@ const AdminSettings = () => {
                     </label>
                     <input
                       type="email"
-                      value={generalSettings.restaurantEmail}
-                      onChange={(e) => setGeneralSettings({...generalSettings, restaurantEmail: e.target.value})}
+                      value={generalSettings.restaurant_email}
+                      onChange={(e) => setGeneralSettings({...generalSettings, restaurant_email: e.target.value})}
                       className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
                     />
                   </div>
@@ -171,8 +231,8 @@ const AdminSettings = () => {
                   </label>
                   <input
                     type="text"
-                    value={generalSettings.openingHours}
-                    onChange={(e) => setGeneralSettings({...generalSettings, openingHours: e.target.value})}
+                    value={generalSettings.opening_hours}
+                    onChange={(e) => setGeneralSettings({...generalSettings, opening_hours: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
                   />
                 </div>
@@ -182,8 +242,17 @@ const AdminSettings = () => {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <CustomButton onClick={handleSaveGeneralSettings}>
-                      <Save size={18} className="mr-2" /> Save Settings
+                    <CustomButton onClick={handleSaveGeneralSettings} disabled={saving}>
+                      {saving ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save size={18} className="mr-2" /> Save Settings
+                        </>
+                      )}
                     </CustomButton>
                   </motion.div>
                 </div>

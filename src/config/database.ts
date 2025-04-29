@@ -1,63 +1,107 @@
 
-// Create a mock database interface for browser environments
-const browserDb = {
-  query: async (text: string, params?: any[]) => {
-    console.log('Browser environment detected, using mock data for:', text);
-    // Return mock data based on common query patterns
-    if (text.includes('SELECT * FROM menu_items')) {
-      return [
-        {
-          id: 1,
-          name: 'Burrata Salad',
-          description: 'Fresh burrata cheese with heirloom tomatoes, basil, and aged balsamic.',
-          price: 14.99,
-          image: 'https://images.unsplash.com/photo-1505253758473-96b7015fcd40?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-          category: 'starters',
-          featured: true,
-          in_stock: true
-        },
-        {
-          id: 2,
-          name: 'Filet Mignon',
-          description: '8oz prime beef tenderloin with red wine reduction and roasted vegetables.',
-          price: 42.99,
-          image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-          category: 'mains',
-          featured: true,
-          in_stock: true
-        },
-        {
-          id: 3,
-          name: 'Chocolate Fondant',
-          description: 'Warm chocolate cake with a molten center and vanilla ice cream.',
-          price: 12.99,
-          image: 'https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-          category: 'desserts',
-          featured: true,
-          in_stock: true
-        }
-      ];
-    } else if (text.includes('SELECT COUNT(*) FROM menu_items')) {
-      return [{ count: "3" }];
-    } else if (text.includes('SELECT COUNT(*) FROM users')) {
-      return [{ count: "0" }];
-    }
-    return [];
-  },
-};
+import { supabase } from '../integrations/supabase/client';
 
-// Determine if we're in a Node.js environment or browser environment
-const isNode = typeof process !== 'undefined' && 
-  process.versions != null && 
-  process.versions.node != null;
+// Define interfaces for common query result types
+export interface CountResult {
+  count: string;
+}
 
-// Export the query function that works in both environments
+// Check if a result is a CountResult
+function isCountResult(obj: any): obj is CountResult {
+  return obj && typeof obj.count === 'string';
+}
+
+// Function to execute database queries via Supabase
 export const query = async (text: string, params?: any[]) => {
   try {
-    // Always use mock data in browser environment
-    // In production, this would be handled by server-side code
-    console.log('Executing mock database query:', text);
-    return await browserDb.query(text, params);
+    console.log('Executing database query:', text, params || []);
+    
+    // Handle common query patterns
+    if (text.includes('SELECT * FROM menu_items')) {
+      const { data, error } = await supabase.from('menu_items').select('*');
+      if (error) throw error;
+      return data || [];
+    } 
+    else if (text.includes('SELECT * FROM menu_items WHERE id =')) {
+      const id = params ? params[0] : null;
+      const { data, error } = await supabase.from('menu_items').select('*').eq('id', id).single();
+      if (error) throw error;
+      return [data];
+    }
+    else if (text.includes('SELECT * FROM menu_items WHERE featured = true')) {
+      const { data, error } = await supabase.from('menu_items').select('*').eq('featured', true);
+      if (error) throw error;
+      return data || [];
+    }
+    else if (text.includes('SELECT * FROM menu_items WHERE category =')) {
+      const category = params ? params[0] : null;
+      const { data, error } = await supabase.from('menu_items').select('*').eq('category', category);
+      if (error) throw error;
+      return data || [];
+    }
+    else if (text.includes('INSERT INTO menu_items')) {
+      const { data, error } = await supabase.from('menu_items').insert(params?.[0] || {}).select();
+      if (error) throw error;
+      return data || [];
+    }
+    else if (text.includes('UPDATE menu_items SET') && text.includes('WHERE id =')) {
+      const id = params?.[params.length - 1];
+      const updateData = params?.[0] || {};
+      const { data, error } = await supabase.from('menu_items').update(updateData).eq('id', id).select();
+      if (error) throw error;
+      return data || [];
+    }
+    else if (text.includes('DELETE FROM menu_items WHERE id =')) {
+      const id = params ? params[0] : null;
+      const { error } = await supabase.from('menu_items').delete().eq('id', id);
+      if (error) throw error;
+      return [{ success: true }];
+    }
+    else if (text.includes('SELECT COUNT(*) FROM')) {
+      const tableName = text.split('FROM ')[1].trim().split(' ')[0];
+      const { count, error } = await supabase.from(tableName).select('*', { count: 'exact', head: true });
+      if (error) throw error;
+      return [{ count: count?.toString() }];
+    }
+    else if (text.includes('SELECT * FROM gallery')) {
+      const { data, error } = await supabase.from('gallery').select('*');
+      if (error) throw error;
+      return data || [];
+    }
+    else if (text.includes('INSERT INTO gallery')) {
+      const { data, error } = await supabase.from('gallery').insert(params?.[0] || {}).select();
+      if (error) throw error;
+      return data || [];
+    }
+    else if (text.includes('UPDATE gallery SET') && text.includes('WHERE id =')) {
+      const id = params?.[params.length - 1];
+      const updateData = params?.[0] || {};
+      const { data, error } = await supabase.from('gallery').update(updateData).eq('id', id).select();
+      if (error) throw error;
+      return data || [];
+    }
+    else if (text.includes('DELETE FROM gallery WHERE id =')) {
+      const id = params ? params[0] : null;
+      const { error } = await supabase.from('gallery').delete().eq('id', id);
+      if (error) throw error;
+      return [{ success: true }];
+    }
+    else if (text.includes('SELECT * FROM settings')) {
+      const { data, error } = await supabase.from('settings').select('*');
+      if (error) throw error;
+      return data || [];
+    }
+    else if (text.includes('UPDATE settings SET')) {
+      const id = params?.[params.length - 1];
+      const updateData = params?.[0] || {};
+      const { data, error } = await supabase.from('settings').update(updateData).eq('id', id).select();
+      if (error) throw error;
+      return data || [];
+    }
+
+    // For any unhandled queries, log and throw an error
+    console.error('Unhandled query type:', text);
+    throw new Error(`Query not implemented: ${text}`);
   } catch (error) {
     console.error('Database query error:', error);
     throw error;
@@ -67,12 +111,12 @@ export const query = async (text: string, params?: any[]) => {
 // Function to test database connection
 export const testDatabaseConnection = async (): Promise<boolean> => {
   try {
-    console.log('Browser environment detected, skipping database connection test');
+    const { data, error } = await supabase.from('settings').select('restaurant_name').limit(1);
+    if (error) throw error;
+    console.log('Database connection successful');
     return true;
   } catch (error) {
     console.error('Database connection failed:', error);
     return false;
   }
 };
-
-// No need to export pool since we're not creating one in the browser

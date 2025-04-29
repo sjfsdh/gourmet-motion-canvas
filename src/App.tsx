@@ -1,10 +1,12 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Layout from "./components/Layout";
+import ScrollToTop from "./components/ScrollToTop";
 import Index from "./pages/Index";
 import Menu from "./pages/Menu";
 import Cart from "./pages/Cart";
@@ -27,87 +29,93 @@ import AdminSettings from "./pages/Admin/AdminSettings";
 import AdminAuth from "./pages/Admin/AdminAuth";
 import AdminProfile from "./pages/Admin/AdminProfile";
 
-// Create a ProtectedRoute component for admin access
-const ProtectedAdminRoute = ({ children }: { children: JSX.Element }) => {
-  // Check if admin token exists in localStorage
-  const isAdminLoggedIn = localStorage.getItem('adminToken') !== null;
+// Create a queryClient for React Query
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
+
+// Create Protected Route component for admin routes
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   
-  if (!isAdminLoggedIn) {
-    return <Navigate to="/admin/login" replace />;
+  useEffect(() => {
+    // Check if admin token exists in localStorage
+    const adminToken = localStorage.getItem('adminToken');
+    setIsAuthenticated(!!adminToken);
+  }, []);
+  
+  if (isAuthenticated === null) {
+    // Still loading
+    return <div>Loading...</div>;
   }
   
-  return children;
-};
-
-const queryClient = new QueryClient();
-
-// Initialize the database
-const initDB = async () => {
-  try {
-    console.log("Initializing database...");
-    await initializeDatabase();
-    await seedDatabaseIfEmpty();
-    console.log("Database initialized successfully.");
-  } catch (error) {
-    console.error("Failed to initialize database:", error);
+  if (isAuthenticated === false) {
+    // Not authenticated, redirect to login
+    return <Navigate to="/admin/login" />;
   }
-};
+  
+  // Authenticated, render children
+  return <>{children}</>;
+}
 
-// Component to handle database initialization
-const DatabaseInitializer = ({ children }: { children: React.ReactNode }) => {
-  const [initialized, setInitialized] = useState(false);
+function App() {
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const init = async () => {
+    const initApp = async () => {
       try {
-        await initDB();
+        // Initialize database
+        await initializeDatabase();
+        // Seed database if empty
+        await seedDatabaseIfEmpty();
       } catch (error) {
-        console.error("Database initialization failed, continuing with app:", error);
+        console.error("Error initializing app:", error);
       } finally {
-        // Always set to initialized, even if there was an error
-        // This ensures the app continues to work in browser environments
-        setInitialized(true);
+        setLoading(false);
       }
     };
 
-    init();
+    initApp();
   }, []);
 
-  if (!initialized) {
-    return <div className="flex items-center justify-center h-screen">
-      <div className="text-center">
-        <div className="animate-spin h-10 w-10 border-4 border-restaurant-green border-t-transparent rounded-full mx-auto mb-4"></div>
-        <p className="text-lg font-medium">Loading application...</p>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-restaurant-green mx-auto mb-4"></div>
+          <p className="text-xl text-gray-600">Loading DistinctGyrro...</p>
+        </div>
       </div>
-    </div>;
+    );
   }
 
-  return <>{children}</>;
-};
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <DatabaseInitializer>
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <BrowserRouter>
+          <ScrollToTop />
           <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Layout><Index /></Layout>} />
-            <Route path="/menu" element={<Layout><Menu /></Layout>} />
-            <Route path="/cart" element={<Layout><Cart /></Layout>} />
-            <Route path="/checkout" element={<Layout><Checkout /></Layout>} />
-            <Route path="/about" element={<Layout><About /></Layout>} />
-            <Route path="/contact" element={<Layout><Contact /></Layout>} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/account" element={<Layout><Account /></Layout>} />
-            
-            {/* Admin Auth Route */}
+            {/* Main website routes */}
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Index />} />
+              <Route path="menu" element={<Menu />} />
+              <Route path="cart" element={<Cart />} />
+              <Route path="checkout" element={<Checkout />} />
+              <Route path="about" element={<About />} />
+              <Route path="contact" element={<Contact />} />
+              <Route path="account" element={<Account />} />
+              <Route path="auth" element={<Auth />} />
+              <Route path="*" element={<NotFound />} />
+            </Route>
+
+            {/* Admin routes */}
             <Route path="/admin/login" element={<AdminAuth />} />
-            
-            {/* Admin Routes - Protected */}
-            <Route path="/admin" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
+            <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
               <Route index element={<Dashboard />} />
               <Route path="menu" element={<MenuManager />} />
               <Route path="categories" element={<CategoryManager />} />
@@ -116,14 +124,14 @@ const App = () => (
               <Route path="settings" element={<AdminSettings />} />
               <Route path="profile" element={<AdminProfile />} />
             </Route>
-            
-            {/* Catch all route */}
-            <Route path="*" element={<NotFound />} />
           </Routes>
-        </DatabaseInitializer>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+
+          <Toaster />
+          <Sonner position="top-right" />
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;
