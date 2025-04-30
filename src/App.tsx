@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -103,7 +104,7 @@ function App() {
             <ScrollToTop />
             <Routes>
               {/* Main website routes */}
-              <Route path="/" element={<Layout />}>
+              <Route path="/" element={<Layout><Outlet /></Layout>}>
                 <Route index element={<Index />} />
                 <Route path="menu" element={<Menu />} />
                 <Route path="cart" element={<Cart />} />
