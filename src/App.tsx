@@ -117,7 +117,11 @@ function App() {
 
               {/* Admin routes */}
               <Route path="/admin/login" element={<AdminAuth />} />
-              <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
+              <Route path="/admin" element={
+                <ProtectedRoute>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }>
                 <Route index element={<Dashboard />} />
                 <Route path="menu" element={<MenuManager />} />
                 <Route path="categories" element={<CategoryManager />} />

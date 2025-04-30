@@ -14,7 +14,15 @@ export interface MenuItem {
 
 // Type guard to check if an object is a MenuItem
 function isMenuItem(obj: any): obj is MenuItem {
-  return obj && typeof obj.id === 'number' && typeof obj.name === 'string';
+  return obj && 
+    typeof obj.id === 'number' && 
+    typeof obj.name === 'string' &&
+    typeof obj.category === 'string' &&
+    typeof obj.price === 'number' &&
+    'description' in obj &&
+    'image' in obj &&
+    'featured' in obj &&
+    'in_stock' in obj;
 }
 
 // Type guard to check if an object is CountResult
@@ -73,7 +81,12 @@ export const getMenuItemsByCategory = async (category: string): Promise<MenuItem
 // Create a new menu item
 export const createMenuItem = async (menuItem: Omit<MenuItem, 'id'>): Promise<MenuItem | null> => {
   try {
-    const data = await query('INSERT INTO menu_items', [menuItem]);
+    const { name, description, price, image, category, featured, in_stock } = menuItem;
+    const data = await query(
+      'INSERT INTO menu_items (name, description, price, image, category, featured, in_stock) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *', 
+      [name, description, price, image, category, featured, in_stock]
+    );
+    
     if (data.length > 0 && isMenuItem(data[0])) {
       return data[0];
     }
@@ -87,7 +100,16 @@ export const createMenuItem = async (menuItem: Omit<MenuItem, 'id'>): Promise<Me
 // Update an existing menu item
 export const updateMenuItem = async (id: number, menuItem: Partial<MenuItem>): Promise<MenuItem | null> => {
   try {
-    const data = await query('UPDATE menu_items SET $1 WHERE id = $2', [menuItem, id]);
+    // Build the SET clause and params dynamically
+    const keys = Object.keys(menuItem).filter(key => key !== 'id');
+    if (keys.length === 0) return null;
+    
+    const setClause = keys.map((key, i) => `${key} = $${i + 2}`).join(', ');
+    const values = keys.map(key => menuItem[key as keyof Partial<MenuItem>]);
+    
+    const query_text = `UPDATE menu_items SET ${setClause} WHERE id = $1 RETURNING *`;
+    const data = await query(query_text, [id, ...values]);
+    
     if (data.length > 0 && isMenuItem(data[0])) {
       return data[0];
     }
@@ -101,8 +123,8 @@ export const updateMenuItem = async (id: number, menuItem: Partial<MenuItem>): P
 // Delete a menu item
 export const deleteMenuItem = async (id: number): Promise<boolean> => {
   try {
-    const data = await query('DELETE FROM menu_items WHERE id = $1', [id]);
-    return !!data;
+    const data = await query('DELETE FROM menu_items WHERE id = $1 RETURNING id', [id]);
+    return data.length > 0;
   } catch (error) {
     console.error(`Error deleting menu item #${id}:`, error);
     return false;
@@ -112,7 +134,7 @@ export const deleteMenuItem = async (id: number): Promise<boolean> => {
 // Toggle featured status
 export const toggleFeaturedStatus = async (id: number, featured: boolean): Promise<MenuItem | null> => {
   try {
-    const data = await query('UPDATE menu_items SET $1 WHERE id = $2', [{ featured }, id]);
+    const data = await query('UPDATE menu_items SET featured = $1 WHERE id = $2 RETURNING *', [featured, id]);
     if (data.length > 0 && isMenuItem(data[0])) {
       return data[0];
     }
@@ -126,7 +148,7 @@ export const toggleFeaturedStatus = async (id: number, featured: boolean): Promi
 // Toggle in-stock status
 export const toggleInStockStatus = async (id: number, in_stock: boolean): Promise<MenuItem | null> => {
   try {
-    const data = await query('UPDATE menu_items SET $1 WHERE id = $2', [{ in_stock }, id]);
+    const data = await query('UPDATE menu_items SET in_stock = $1 WHERE id = $2 RETURNING *', [in_stock, id]);
     if (data.length > 0 && isMenuItem(data[0])) {
       return data[0];
     }
