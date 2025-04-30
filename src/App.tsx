@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -41,7 +40,8 @@ const queryClient = new QueryClient({
 });
 
 // Create Protected Route component for admin routes
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+// Fixed: Properly typed with ReactNode for children
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   
   useEffect(() => {
@@ -121,9 +121,7 @@ function App() {
                 path="/admin" 
                 element={
                   <ProtectedRoute>
-                    <AdminLayout>
-                      <Outlet />
-                    </AdminLayout>
+                    <AdminLayout />
                   </ProtectedRoute>
                 }
               >
