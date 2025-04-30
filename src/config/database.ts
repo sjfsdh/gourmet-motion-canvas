@@ -40,26 +40,63 @@ export const query = async (text: string, params?: any[]) => {
       return data || [];
     }
     else if (text.includes('INSERT INTO menu_items')) {
-      const { data, error } = await supabase.from('menu_items').insert(params?.[0] || {}).select();
+      // For insert queries, create an object from the parameters
+      const insertData = {
+        name: params?.[0],
+        description: params?.[1],
+        price: params?.[2],
+        image: params?.[3],
+        category: params?.[4],
+        featured: params?.[5],
+        in_stock: params?.[6]
+      };
+      const { data, error } = await supabase.from('menu_items').insert(insertData).select();
       if (error) throw error;
       return data || [];
     }
     else if (text.includes('UPDATE menu_items SET') && text.includes('WHERE id =')) {
-      const id = params?.[params.length - 1];
-      const updateData = params?.[0] || {};
-      const { data, error } = await supabase.from('menu_items').update(updateData).eq('id', id).select();
-      if (error) throw error;
-      return data || [];
+      // For dynamic SET clause updates
+      if (text.includes('featured = $1')) {
+        const featured = params?.[0];
+        const id = params?.[1];
+        const { data, error } = await supabase.from('menu_items').update({ featured }).eq('id', id).select();
+        if (error) throw error;
+        return data || [];
+      }
+      else if (text.includes('in_stock = $1')) {
+        const in_stock = params?.[0];
+        const id = params?.[1];
+        const { data, error } = await supabase.from('menu_items').update({ in_stock }).eq('id', id).select();
+        if (error) throw error;
+        return data || [];
+      }
+      else {
+        // Handle dynamic SET clauses
+        const id = params?.[0];
+        const updateData: any = {};
+        
+        // Extract field names from the query
+        const setClause = text.split('SET ')[1].split(' WHERE')[0];
+        const fields = setClause.split(', ').map(field => field.trim().split(' = ')[0]);
+        
+        // Build update object from field names and params
+        fields.forEach((field, i) => {
+          updateData[field] = params?.[i + 1];
+        });
+        
+        const { data, error } = await supabase.from('menu_items').update(updateData).eq('id', id).select();
+        if (error) throw error;
+        return data || [];
+      }
     }
     else if (text.includes('DELETE FROM menu_items WHERE id =')) {
       const id = params ? params[0] : null;
-      const { error } = await supabase.from('menu_items').delete().eq('id', id);
+      const { data, error } = await supabase.from('menu_items').delete().eq('id', id).select();
       if (error) throw error;
-      return [{ success: true }];
+      return data || [];
     }
     else if (text.includes('SELECT COUNT(*) FROM')) {
       const tableName = text.split('FROM ')[1].trim().split(' ')[0];
-      // Use type assertion to help TypeScript with the table names
       const { count, error } = await supabase
         .from(tableName as any)
         .select('*', { count: 'exact', head: true });
