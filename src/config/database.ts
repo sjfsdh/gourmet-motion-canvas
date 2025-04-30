@@ -18,27 +18,31 @@ export const query = async (text: string, params?: any[]) => {
     
     // Handle common query patterns
     if (text.includes('SELECT * FROM menu_items')) {
-      const { data, error } = await supabase.from('menu_items').select('*');
-      if (error) throw error;
-      return data || [];
+      // For general select on menu_items
+      if (text.includes('WHERE id =')) {
+        const id = params ? params[0] : null;
+        const { data, error } = await supabase.from('menu_items').select('*').eq('id', id).single();
+        if (error) throw error;
+        return [data];
+      } 
+      else if (text.includes('WHERE featured = true')) {
+        const { data, error } = await supabase.from('menu_items').select('*').eq('featured', true);
+        if (error) throw error;
+        return data || [];
+      }
+      else if (text.includes('WHERE category =')) {
+        const category = params ? params[0] : null;
+        const { data, error } = await supabase.from('menu_items').select('*').eq('category', category);
+        if (error) throw error;
+        return data || [];
+      } 
+      else {
+        // General SELECT * FROM menu_items
+        const { data, error } = await supabase.from('menu_items').select('*');
+        if (error) throw error;
+        return data || [];
+      }
     } 
-    else if (text.includes('SELECT * FROM menu_items WHERE id =')) {
-      const id = params ? params[0] : null;
-      const { data, error } = await supabase.from('menu_items').select('*').eq('id', id).single();
-      if (error) throw error;
-      return [data];
-    }
-    else if (text.includes('SELECT * FROM menu_items WHERE featured = true')) {
-      const { data, error } = await supabase.from('menu_items').select('*').eq('featured', true);
-      if (error) throw error;
-      return data || [];
-    }
-    else if (text.includes('SELECT * FROM menu_items WHERE category =')) {
-      const category = params ? params[0] : null;
-      const { data, error } = await supabase.from('menu_items').select('*').eq('category', category);
-      if (error) throw error;
-      return data || [];
-    }
     else if (text.includes('INSERT INTO menu_items')) {
       // For insert queries, create an object from the parameters
       const insertData = {

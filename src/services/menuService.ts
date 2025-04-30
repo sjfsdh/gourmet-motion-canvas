@@ -17,8 +17,8 @@ function isMenuItem(obj: any): obj is MenuItem {
   return obj && 
     typeof obj.id === 'number' && 
     typeof obj.name === 'string' &&
-    typeof obj.category === 'string' &&
     typeof obj.price === 'number' &&
+    typeof obj.category === 'string' &&
     'description' in obj &&
     'image' in obj &&
     'featured' in obj &&
