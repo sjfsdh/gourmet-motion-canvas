@@ -1,141 +1,155 @@
 
-import { query, testDatabaseConnection } from '../config/database';
-import { initializeMenuItemsTable } from './menuService';
-import { toast } from "sonner";
+import { query, CountResult } from '../config/database';
+import { supabase } from '../integrations/supabase/client';
 
-// Check if we're in a browser environment
-const isBrowser = typeof window !== 'undefined' && window.document;
+// Initial menu items for database seeding
+const initialMenuItems = [
+  {
+    name: 'Traditional Gyro',
+    description: 'Tender slices of beef and lamb wrapped in warm pita bread with tomatoes, onions, and tzatziki sauce.',
+    price: 12.99,
+    image: 'https://images.unsplash.com/photo-1529589789467-4a12ccb8e5ff',
+    category: 'mains',
+    featured: true
+  },
+  {
+    name: 'Greek Salad',
+    description: 'Crisp lettuce, tomatoes, cucumbers, red onions, Kalamata olives, and feta cheese, tossed in our house Greek dressing.',
+    price: 9.99,
+    image: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe',
+    category: 'starters',
+    featured: true
+  },
+  {
+    name: 'Spanakopita',
+    description: 'Flaky phyllo pastry filled with spinach, feta cheese, and herbs.',
+    price: 7.99,
+    image: 'https://images.unsplash.com/photo-1537627856186-9398d2adade3',
+    category: 'starters',
+    featured: false
+  },
+  {
+    name: 'Lamb Souvlaki Plate',
+    description: 'Marinated lamb skewers served with rice pilaf, Greek salad, and pita bread.',
+    price: 16.99,
+    image: 'https://images.unsplash.com/photo-1529193591184-b1d58069ecdd',
+    category: 'mains',
+    featured: true
+  },
+  {
+    name: 'Baklava',
+    description: 'Layers of phyllo dough filled with chopped nuts and sweetened with honey syrup.',
+    price: 6.99,
+    image: 'https://images.unsplash.com/photo-1519676867240-f03562e64548',
+    category: 'desserts',
+    featured: false
+  },
+  {
+    name: 'Greek Fries',
+    description: 'Hand-cut fries tossed with Greek herbs, feta cheese, and olive oil.',
+    price: 5.99,
+    image: 'https://images.unsplash.com/photo-1576107232684-1279f390859f',
+    category: 'sides',
+    featured: false
+  }
+];
 
-// Interface for count result
-interface CountResult {
-  count: string;
-}
-
-// Type guard to check if an object is a CountResult
-function isCountResult(obj: any): obj is CountResult {
-  return obj && typeof obj.count === 'string';
-}
-
-// Initialize all required database tables
-export const initializeDatabase = async (): Promise<void> => {
+// Function to initialize database
+export const initializeDatabase = async () => {
   try {
-    console.log('Starting database initialization...');
+    console.log('Initializing database...');
     
-    // Skip actual table creation in browser environment (already done via SQL migration)
-    if (isBrowser) {
-      console.log('Browser environment detected, using Supabase tables');
-      return;
+    // Test connection to database
+    const { data, error } = await supabase.from('settings').select('restaurant_name').limit(1);
+    
+    if (error) {
+      console.error('Database connection error:', error);
+      throw error;
     }
     
-    // Test connection before proceeding
-    const connectionSuccessful = await testDatabaseConnection();
-    if (!connectionSuccessful) {
-      throw new Error('Database connection failed');
-    }
-    
-    // Tables are already initialized through SQL migrations
-    console.log('Database tables initialized via SQL migration');
+    console.log('Database initialized successfully');
+    return true;
   } catch (error) {
-    console.error('Database initialization error:', error);
-    if (isBrowser) {
-      toast.error("Database initialization failed. Using mock data instead.");
-    }
-    throw error;
+    console.error('Database initialization failed:', error);
+    return false;
   }
 };
 
-// Insert seed data for testing if tables are empty
-export const seedDatabaseIfEmpty = async (): Promise<void> => {
+// Function to seed database if empty
+export const seedDatabaseIfEmpty = async () => {
   try {
-    if (isBrowser) {
-      console.log('Browser environment detected, checking if seeding is needed');
-    }
+    console.log('Checking if database needs seeding...');
     
     // Check if menu_items table is empty
-    const menuItems = await query('SELECT COUNT(*) FROM menu_items');
+    const result = await query('SELECT COUNT(*) FROM menu_items');
     
-    if (menuItems.length > 0) {
-      const firstItem = menuItems[0];
+    // Ensure we have a CountResult
+    if (!result || result.length === 0) {
+      throw new Error("Could not count menu items");
+    }
+    
+    const countResult = result[0];
+    if ('count' in countResult) {
+      const count = parseInt(countResult.count, 10);
       
-      // Use the type guard to check if this is a count result
-      if (isCountResult(firstItem)) {
-        const count = parseInt(firstItem.count || '0');
-        console.log(`Menu items count: ${count}`);
+      if (count === 0) {
+        console.log('Menu items table empty, seeding data...');
         
-        if (count === 0) {
-          console.log('Seeding menu items...');
-          
-          // Sample menu items
-          const sampleItems = [
-            {
-              name: 'Burrata Salad',
-              description: 'Fresh burrata cheese with heirloom tomatoes, basil, and aged balsamic.',
-              price: 14.99,
-              image: 'https://images.unsplash.com/photo-1505253758473-96b7015fcd40?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-              category: 'starters',
-              featured: true
-            },
-            {
-              name: 'Filet Mignon',
-              description: '8oz prime beef tenderloin with red wine reduction and roasted vegetables.',
-              price: 42.99,
-              image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-              category: 'mains',
-              featured: true
-            },
-            {
-              name: 'Chocolate Fondant',
-              description: 'Warm chocolate cake with a molten center and vanilla ice cream.',
-              price: 12.99,
-              image: 'https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-              category: 'desserts',
-              featured: true
-            },
-            {
-              name: 'Caprese Bruschetta',
-              description: 'Toasted ciabatta topped with fresh tomatoes, mozzarella, and basil.',
-              price: 11.99,
-              image: 'https://images.unsplash.com/photo-1572695157366-5e585ab2b69f?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-              category: 'starters',
-              featured: false
-            },
-            {
-              name: 'Grilled Salmon',
-              description: 'Fresh Atlantic salmon with lemon butter sauce and seasonal vegetables.',
-              price: 28.99,
-              image: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-              category: 'mains',
-              featured: false
-            }
-          ];
-          
-          // Insert samples via Supabase
-          for (const item of sampleItems) {
-            const { data, error } = await supabase.from('menu_items').insert(item);
-            if (error) console.error('Error inserting sample item:', error);
-          }
-          
-          console.log('Sample menu items added.');
+        // Seed menu_items
+        for (const item of initialMenuItems) {
+          await query('INSERT INTO menu_items', [item]);
         }
+        
+        console.log('Database seeded successfully');
+      } else {
+        console.log(`Database already contains ${count} menu items, skipping seed`);
       }
+    } else {
+      console.error('Unexpected result format from count query');
     }
     
-    // Check if users table is empty
-    const users = await query('SELECT COUNT(*) FROM users');
-    
-    if (users.length > 0) {
-      const firstUser = users[0];
-      
-      // Use type guard to check if this is a count result
-      if (isCountResult(firstUser)) {
-        const count = parseInt(firstUser.count || '0');
-        if (count === 0) {
-          console.log('Admin user already added through migration');
-        }
-      }
-    }
-    
+    return true;
   } catch (error) {
-    console.error('Error seeding database:', error);
+    console.error('Database seeding failed:', error);
+    return false;
+  }
+};
+
+// Function to check if settings need seeding
+export const checkAndSeedSettings = async () => {
+  try {
+    // Check if settings table is empty
+    const result = await query('SELECT COUNT(*) FROM settings');
+    
+    // Ensure we have a CountResult
+    if (!result || result.length === 0) {
+      throw new Error("Could not count settings");
+    }
+    
+    const countResult = result[0];
+    if ('count' in countResult) {
+      const count = parseInt(countResult.count, 10);
+      
+      if (count === 0) {
+        console.log('Settings table empty, seeding default settings...');
+        
+        // Seed settings with defaults
+        const defaultSettings = {
+          restaurant_name: 'DistinctGyrro',
+          restaurant_address: '123 Mediterranean Street, Foodie District, New York, NY 10001',
+          restaurant_phone: '+1 (212) 555-1234',
+          restaurant_email: 'info@distinctgyrro.com',
+          opening_hours: 'Monday - Friday: 8:00 AM - 10:00 PM\nSaturday: 9:00 AM - 11:00 PM\nSunday: 10:00 AM - 9:00 PM'
+        };
+        
+        await query('INSERT INTO settings', [defaultSettings]);
+        console.log('Settings seeded successfully');
+      }
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Settings seeding failed:', error);
+    return false;
   }
 };

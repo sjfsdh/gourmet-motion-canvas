@@ -1,9 +1,6 @@
 
-import { query } from '../config/database';
-import { uploadImage } from '../config/cloudinary';
-import { supabase } from '../integrations/supabase/client';
+import { query, CountResult } from '../config/database';
 
-// Types
 export interface MenuItem {
   id: number;
   name: string;
@@ -12,54 +9,41 @@ export interface MenuItem {
   image: string;
   category: string;
   featured: boolean;
-  inStock?: boolean;
+  in_stock: boolean;
 }
 
-export interface CountResult {
-  count: string;
-}
-
-// Type guard to check if object is a MenuItem
+// Type guard to check if an object is a MenuItem
 function isMenuItem(obj: any): obj is MenuItem {
-  return obj && 
-    typeof obj.id === 'number' && 
-    typeof obj.name === 'string' &&
-    typeof obj.price === 'number';
+  return obj && typeof obj.id === 'number' && typeof obj.name === 'string';
 }
 
-// Type guard to check if array contains MenuItems
-function isMenuItemArray(arr: any[]): arr is MenuItem[] {
-  return arr.length === 0 || isMenuItem(arr[0]);
+// Type guard to check if an object is CountResult
+function isCountResult(obj: any): obj is CountResult {
+  return obj && typeof obj.count === 'string';
 }
 
 // Get all menu items
 export const getAllMenuItems = async (): Promise<MenuItem[]> => {
   try {
-    const menuItems = await query('SELECT * FROM menu_items');
-    
-    // Check if the result is valid menu items
-    if (isMenuItemArray(menuItems)) {
-      return menuItems;
-    }
-    return [];
+    const data = await query('SELECT * FROM menu_items');
+    // Filter out any non-MenuItem objects
+    return data.filter(isMenuItem);
   } catch (error) {
     console.error('Error fetching menu items:', error);
     return [];
   }
 };
 
-// Get menu item by id
+// Get menu item by ID
 export const getMenuItemById = async (id: number): Promise<MenuItem | null> => {
   try {
-    const result = await query('SELECT * FROM menu_items WHERE id = $1', [id]);
-    
-    // Check if the result is a valid menu item
-    if (result.length > 0 && isMenuItem(result[0])) {
-      return result[0];
+    const data = await query('SELECT * FROM menu_items WHERE id = $1', [id]);
+    if (data.length > 0 && isMenuItem(data[0])) {
+      return data[0];
     }
     return null;
   } catch (error) {
-    console.error(`Error fetching menu item ${id}:`, error);
+    console.error(`Error fetching menu item #${id}:`, error);
     return null;
   }
 };
@@ -67,13 +51,8 @@ export const getMenuItemById = async (id: number): Promise<MenuItem | null> => {
 // Get featured menu items
 export const getFeaturedMenuItems = async (): Promise<MenuItem[]> => {
   try {
-    const result = await query('SELECT * FROM menu_items WHERE featured = true');
-    
-    // Check if the results are valid menu items
-    if (isMenuItemArray(result)) {
-      return result;
-    }
-    return [];
+    const data = await query('SELECT * FROM menu_items WHERE featured = true');
+    return data.filter(isMenuItem);
   } catch (error) {
     console.error('Error fetching featured menu items:', error);
     return [];
@@ -83,13 +62,8 @@ export const getFeaturedMenuItems = async (): Promise<MenuItem[]> => {
 // Get menu items by category
 export const getMenuItemsByCategory = async (category: string): Promise<MenuItem[]> => {
   try {
-    const result = await query('SELECT * FROM menu_items WHERE category = $1', [category]);
-    
-    // Check if the results are valid menu items
-    if (isMenuItemArray(result)) {
-      return result;
-    }
-    return [];
+    const data = await query('SELECT * FROM menu_items WHERE category = $1', [category]);
+    return data.filter(isMenuItem);
   } catch (error) {
     console.error(`Error fetching menu items for category ${category}:`, error);
     return [];
@@ -97,35 +71,11 @@ export const getMenuItemsByCategory = async (category: string): Promise<MenuItem
 };
 
 // Create a new menu item
-export const createMenuItem = async (item: Omit<MenuItem, 'id'>, imageFile?: string): Promise<MenuItem | null> => {
+export const createMenuItem = async (menuItem: Omit<MenuItem, 'id'>): Promise<MenuItem | null> => {
   try {
-    let imageUrl = item.image;
-    
-    // If an image file is provided, upload it to Cloudinary
-    if (imageFile) {
-      const uploadResult = await uploadImage(imageFile);
-      imageUrl = uploadResult.secure_url;
-    }
-    
-    const { name, description, price, category, featured } = item;
-    const newItem = {
-      name,
-      description,
-      price,
-      image: imageUrl,
-      category,
-      featured,
-      in_stock: true
-    };
-    
-    const result = await query(
-      'INSERT INTO menu_items (name, description, price, image, category, featured, in_stock) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [newItem]
-    );
-    
-    // Check if the result is a valid menu item
-    if (result.length > 0 && isMenuItem(result[0])) {
-      return result[0];
+    const data = await query('INSERT INTO menu_items', [menuItem]);
+    if (data.length > 0 && isMenuItem(data[0])) {
+      return data[0];
     }
     return null;
   } catch (error) {
@@ -134,45 +84,16 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id'>, imageFile?: str
   }
 };
 
-// Update a menu item
-export const updateMenuItem = async (id: number, item: Partial<MenuItem>, imageFile?: string): Promise<MenuItem | null> => {
+// Update an existing menu item
+export const updateMenuItem = async (id: number, menuItem: Partial<MenuItem>): Promise<MenuItem | null> => {
   try {
-    let imageUrl = item.image;
-    
-    // If an image file is provided, upload it to Cloudinary
-    if (imageFile) {
-      const uploadResult = await uploadImage(imageFile);
-      imageUrl = uploadResult.secure_url;
-      item.image = imageUrl;
-    }
-    
-    // Create update object with only defined fields
-    const updates: any = {};
-    
-    if (item.name !== undefined) updates.name = item.name;
-    if (item.description !== undefined) updates.description = item.description;
-    if (item.price !== undefined) updates.price = item.price;
-    if (item.image !== undefined) updates.image = item.image;
-    if (item.category !== undefined) updates.category = item.category;
-    if (item.featured !== undefined) updates.featured = item.featured;
-    if (item.inStock !== undefined) updates.in_stock = item.inStock;
-    
-    if (Object.keys(updates).length === 0) {
-      return null;
-    }
-    
-    const result = await query(
-      `UPDATE menu_items SET ${Object.keys(updates).map(key => `${key} = $1`).join(', ')} WHERE id = $2 RETURNING *`,
-      [updates, id]
-    );
-    
-    // Check if the result is a valid menu item
-    if (result.length > 0 && isMenuItem(result[0])) {
-      return result[0];
+    const data = await query('UPDATE menu_items SET $1 WHERE id = $2', [menuItem, id]);
+    if (data.length > 0 && isMenuItem(data[0])) {
+      return data[0];
     }
     return null;
   } catch (error) {
-    console.error(`Error updating menu item ${id}:`, error);
+    console.error(`Error updating menu item #${id}:`, error);
     return null;
   }
 };
@@ -180,21 +101,64 @@ export const updateMenuItem = async (id: number, item: Partial<MenuItem>, imageF
 // Delete a menu item
 export const deleteMenuItem = async (id: number): Promise<boolean> => {
   try {
-    await query('DELETE FROM menu_items WHERE id = $1', [id]);
-    return true;
+    const data = await query('DELETE FROM menu_items WHERE id = $1', [id]);
+    return !!data;
   } catch (error) {
-    console.error(`Error deleting menu item ${id}:`, error);
+    console.error(`Error deleting menu item #${id}:`, error);
     return false;
   }
 };
 
-// Create table if it doesn't exist - this is now handled by our SQL migration
-export const initializeMenuItemsTable = async (): Promise<void> => {
+// Toggle featured status
+export const toggleFeaturedStatus = async (id: number, featured: boolean): Promise<MenuItem | null> => {
   try {
-    // This function is now a no-op since we've created the tables with SQL migration
-    console.log('Menu items table already initialized through migration');
+    const data = await query('UPDATE menu_items SET $1 WHERE id = $2', [{ featured }, id]);
+    if (data.length > 0 && isMenuItem(data[0])) {
+      return data[0];
+    }
+    return null;
   } catch (error) {
-    console.error('Error initializing menu_items table:', error);
-    throw error;
+    console.error(`Error toggling featured status for menu item #${id}:`, error);
+    return null;
+  }
+};
+
+// Toggle in-stock status
+export const toggleInStockStatus = async (id: number, in_stock: boolean): Promise<MenuItem | null> => {
+  try {
+    const data = await query('UPDATE menu_items SET $1 WHERE id = $2', [{ in_stock }, id]);
+    if (data.length > 0 && isMenuItem(data[0])) {
+      return data[0];
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error toggling in-stock status for menu item #${id}:`, error);
+    return null;
+  }
+};
+
+// Get menu item categories
+export const getMenuItemCategories = async (): Promise<string[]> => {
+  try {
+    const items = await getAllMenuItems();
+    const categories = [...new Set(items.map(item => item.category))];
+    return categories;
+  } catch (error) {
+    console.error('Error fetching menu item categories:', error);
+    return [];
+  }
+};
+
+// Get count of menu items
+export const getMenuItemCount = async (): Promise<number> => {
+  try {
+    const data = await query('SELECT COUNT(*) FROM menu_items');
+    if (data.length > 0 && isCountResult(data[0])) {
+      return parseInt(data[0].count, 10);
+    }
+    return 0;
+  } catch (error) {
+    console.error('Error counting menu items:', error);
+    return 0;
   }
 };

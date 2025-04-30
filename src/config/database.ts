@@ -59,7 +59,10 @@ export const query = async (text: string, params?: any[]) => {
     }
     else if (text.includes('SELECT COUNT(*) FROM')) {
       const tableName = text.split('FROM ')[1].trim().split(' ')[0];
-      const { count, error } = await supabase.from(tableName).select('*', { count: 'exact', head: true });
+      // Use type assertion to help TypeScript with the table names
+      const { count, error } = await supabase
+        .from(tableName as any)
+        .select('*', { count: 'exact', head: true });
       if (error) throw error;
       return [{ count: count?.toString() }];
     }

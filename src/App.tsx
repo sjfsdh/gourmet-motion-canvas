@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { LazyMotion, domMax } from "framer-motion";
 import Layout from "./components/Layout";
 import ScrollToTop from "./components/ScrollToTop";
 import Index from "./pages/Index";
@@ -95,42 +96,44 @@ function App() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <BrowserRouter>
-          <ScrollToTop />
-          <Routes>
-            {/* Main website routes */}
-            <Route path="/" element={<Layout />}>
-              <Route index element={<Index />} />
-              <Route path="menu" element={<Menu />} />
-              <Route path="cart" element={<Cart />} />
-              <Route path="checkout" element={<Checkout />} />
-              <Route path="about" element={<About />} />
-              <Route path="contact" element={<Contact />} />
-              <Route path="account" element={<Account />} />
-              <Route path="auth" element={<Auth />} />
-              <Route path="*" element={<NotFound />} />
-            </Route>
+    <LazyMotion features={domMax}>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <BrowserRouter>
+            <ScrollToTop />
+            <Routes>
+              {/* Main website routes */}
+              <Route path="/" element={<Layout />}>
+                <Route index element={<Index />} />
+                <Route path="menu" element={<Menu />} />
+                <Route path="cart" element={<Cart />} />
+                <Route path="checkout" element={<Checkout />} />
+                <Route path="about" element={<About />} />
+                <Route path="contact" element={<Contact />} />
+                <Route path="account" element={<Account />} />
+                <Route path="auth" element={<Auth />} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
 
-            {/* Admin routes */}
-            <Route path="/admin/login" element={<AdminAuth />} />
-            <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
-              <Route index element={<Dashboard />} />
-              <Route path="menu" element={<MenuManager />} />
-              <Route path="categories" element={<CategoryManager />} />
-              <Route path="orders" element={<OrderManager />} />
-              <Route path="gallery" element={<GalleryManager />} />
-              <Route path="settings" element={<AdminSettings />} />
-              <Route path="profile" element={<AdminProfile />} />
-            </Route>
-          </Routes>
+              {/* Admin routes */}
+              <Route path="/admin/login" element={<AdminAuth />} />
+              <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
+                <Route index element={<Dashboard />} />
+                <Route path="menu" element={<MenuManager />} />
+                <Route path="categories" element={<CategoryManager />} />
+                <Route path="orders" element={<OrderManager />} />
+                <Route path="gallery" element={<GalleryManager />} />
+                <Route path="settings" element={<AdminSettings />} />
+                <Route path="profile" element={<AdminProfile />} />
+              </Route>
+            </Routes>
 
-          <Toaster />
-          <Sonner position="top-right" />
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+            <Toaster />
+            <Sonner position="top-right" />
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </LazyMotion>
   );
 }
 
