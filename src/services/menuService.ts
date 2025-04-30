@@ -34,7 +34,7 @@ function isCountResult(obj: any): obj is CountResult {
 export const getAllMenuItems = async (): Promise<MenuItem[]> => {
   try {
     const data = await query('SELECT * FROM menu_items');
-    // Filter out any non-MenuItem objects
+    // Ensure we only return objects that match the MenuItem interface
     return data.filter(isMenuItem);
   } catch (error) {
     console.error('Error fetching menu items:', error);
@@ -60,6 +60,7 @@ export const getMenuItemById = async (id: number): Promise<MenuItem | null> => {
 export const getFeaturedMenuItems = async (): Promise<MenuItem[]> => {
   try {
     const data = await query('SELECT * FROM menu_items WHERE featured = true');
+    // Ensure we only return objects that match the MenuItem interface
     return data.filter(isMenuItem);
   } catch (error) {
     console.error('Error fetching featured menu items:', error);
@@ -71,6 +72,7 @@ export const getFeaturedMenuItems = async (): Promise<MenuItem[]> => {
 export const getMenuItemsByCategory = async (category: string): Promise<MenuItem[]> => {
   try {
     const data = await query('SELECT * FROM menu_items WHERE category = $1', [category]);
+    // Ensure we only return objects that match the MenuItem interface
     return data.filter(isMenuItem);
   } catch (error) {
     console.error(`Error fetching menu items for category ${category}:`, error);
