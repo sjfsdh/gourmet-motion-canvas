@@ -10,6 +10,7 @@ export interface MenuItem {
   category: string;
   featured: boolean;
   in_stock: boolean;
+  created_at?: string; // Making created_at optional since it's added by the database
 }
 
 // Type guard to check if an object is a MenuItem
@@ -35,7 +36,7 @@ export const getAllMenuItems = async (): Promise<MenuItem[]> => {
   try {
     const data = await query('SELECT * FROM menu_items');
     // Ensure we only return objects that match the MenuItem interface
-    return data.filter(isMenuItem);
+    return data.filter(isMenuItem) as MenuItem[];
   } catch (error) {
     console.error('Error fetching menu items:', error);
     return [];
@@ -47,7 +48,7 @@ export const getMenuItemById = async (id: number): Promise<MenuItem | null> => {
   try {
     const data = await query('SELECT * FROM menu_items WHERE id = $1', [id]);
     if (data.length > 0 && isMenuItem(data[0])) {
-      return data[0];
+      return data[0] as MenuItem;
     }
     return null;
   } catch (error) {
@@ -61,7 +62,7 @@ export const getFeaturedMenuItems = async (): Promise<MenuItem[]> => {
   try {
     const data = await query('SELECT * FROM menu_items WHERE featured = true');
     // Ensure we only return objects that match the MenuItem interface
-    return data.filter(isMenuItem);
+    return data.filter(isMenuItem) as MenuItem[];
   } catch (error) {
     console.error('Error fetching featured menu items:', error);
     return [];
@@ -73,7 +74,7 @@ export const getMenuItemsByCategory = async (category: string): Promise<MenuItem
   try {
     const data = await query('SELECT * FROM menu_items WHERE category = $1', [category]);
     // Ensure we only return objects that match the MenuItem interface
-    return data.filter(isMenuItem);
+    return data.filter(isMenuItem) as MenuItem[];
   } catch (error) {
     console.error(`Error fetching menu items for category ${category}:`, error);
     return [];
@@ -90,7 +91,7 @@ export const createMenuItem = async (menuItem: Omit<MenuItem, 'id'>): Promise<Me
     );
     
     if (data.length > 0 && isMenuItem(data[0])) {
-      return data[0];
+      return data[0] as MenuItem;
     }
     return null;
   } catch (error) {
@@ -113,7 +114,7 @@ export const updateMenuItem = async (id: number, menuItem: Partial<MenuItem>): P
     const data = await query(query_text, [id, ...values]);
     
     if (data.length > 0 && isMenuItem(data[0])) {
-      return data[0];
+      return data[0] as MenuItem;
     }
     return null;
   } catch (error) {
@@ -138,7 +139,7 @@ export const toggleFeaturedStatus = async (id: number, featured: boolean): Promi
   try {
     const data = await query('UPDATE menu_items SET featured = $1 WHERE id = $2 RETURNING *', [featured, id]);
     if (data.length > 0 && isMenuItem(data[0])) {
-      return data[0];
+      return data[0] as MenuItem;
     }
     return null;
   } catch (error) {
@@ -152,7 +153,7 @@ export const toggleInStockStatus = async (id: number, in_stock: boolean): Promis
   try {
     const data = await query('UPDATE menu_items SET in_stock = $1 WHERE id = $2 RETURNING *', [in_stock, id]);
     if (data.length > 0 && isMenuItem(data[0])) {
-      return data[0];
+      return data[0] as MenuItem;
     }
     return null;
   } catch (error) {
