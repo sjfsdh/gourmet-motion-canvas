@@ -121,7 +121,9 @@ function App() {
                 path="/admin" 
                 element={
                   <ProtectedRoute>
-                    <AdminLayout />
+                    <AdminLayout>
+                      <Outlet />
+                    </AdminLayout>
                   </ProtectedRoute>
                 }
               >
