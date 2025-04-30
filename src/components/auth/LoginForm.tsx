@@ -6,6 +6,7 @@ import { CustomButton } from '@/components/ui/custom-button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LoginFormProps {
   switchToSignup: () => void;
@@ -18,6 +19,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ switchToSignup }) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { setIsAdmin } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,20 +37,31 @@ const LoginForm: React.FC<LoginFormProps> = ({ switchToSignup }) => {
       }
 
       if (data) {
-        // Check if the user is an admin
-        const isAdmin = localStorage.getItem('adminToken') !== null;
+        // For demo purposes, check if this is the admin user
+        if (email === 'admin@example.com') {
+          localStorage.setItem('adminToken', 'mock-jwt-admin-token');
+          localStorage.setItem('adminUser', JSON.stringify({ 
+            name: 'Admin User', 
+            email: 'admin@example.com',
+            role: 'Administrator'
+          }));
+          setIsAdmin(true);
+        }
         
         toast({
           title: "Login successful!",
           description: "Welcome back!",
         });
         
-        // Redirect to the appropriate page
-        if (isAdmin) {
-          navigate('/admin');
-        } else {
-          navigate('/');
-        }
+        // Save user data to localStorage for demo
+        localStorage.setItem('user', JSON.stringify({
+          name: data.user?.user_metadata?.full_name || email.split('@')[0],
+          email: email,
+          id: data.user?.id
+        }));
+        
+        // Redirect to the home page
+        navigate('/');
       }
     } catch (error: any) {
       console.error('Login error:', error);

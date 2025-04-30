@@ -5,6 +5,7 @@ import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { CustomButton } from '@/components/ui/custom-button';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AdminAuth = () => {
   const [email, setEmail] = useState('');
@@ -13,21 +14,22 @@ const AdminAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isAdmin, setIsAdmin } = useAuth();
 
   // Check if already logged in
   useEffect(() => {
     if (localStorage.getItem('adminToken')) {
+      setIsAdmin(true);
       navigate('/admin');
     }
-  }, [navigate]);
+  }, [navigate, setIsAdmin]);
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // This is a mock admin login. In a real app, this would be authenticated against a backend
-    setTimeout(() => {
-      // For demo, only allow admin@example.com with password 'admin123'
+    try {
+      // This is a mock admin login. In a real app, this would be authenticated against a backend
       if (email === 'admin@example.com' && password === 'admin123') {
         localStorage.setItem('adminToken', 'mock-jwt-admin-token');
         localStorage.setItem('adminUser', JSON.stringify({ 
@@ -35,6 +37,9 @@ const AdminAuth = () => {
           email: 'admin@example.com',
           role: 'Administrator'
         }));
+        
+        // Set isAdmin state to trigger proper redirect
+        setIsAdmin(true);
         
         toast({
           title: "Admin login successful!",
@@ -49,9 +54,16 @@ const AdminAuth = () => {
           variant: "destructive"
         });
       }
-      
+    } catch (error) {
+      console.error("Admin login error:", error);
+      toast({
+        title: "Login error",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (

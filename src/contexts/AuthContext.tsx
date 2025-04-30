@@ -9,6 +9,7 @@ interface AuthContextType {
   isLoading: boolean;
   signOut: () => Promise<void>;
   isAdmin: boolean;
+  setIsAdmin: (value: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   signOut: async () => {},
   isAdmin: false,
+  setIsAdmin: () => {},
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -48,6 +50,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: authListener } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
+      
+      // If logging out, ensure we clear admin status too
+      if (event === 'SIGNED_OUT') {
+        localStorage.removeItem('adminToken');
+        setIsAdmin(false);
+      }
     });
 
     return () => {
@@ -70,7 +78,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     isLoading,
     signOut,
-    isAdmin
+    isAdmin,
+    setIsAdmin
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

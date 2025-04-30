@@ -47,7 +47,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   
   if (isLoading) {
     // Still loading
-    return <div>Loading...</div>;
+    return <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-restaurant-green"></div>
+    </div>;
   }
   
   if (!isAdmin) {
@@ -56,6 +58,23 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   // Authenticated, render children
+  return <>{children}</>;
+};
+
+// Create protected route for account page
+const ProtectedUserRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-restaurant-green"></div>
+    </div>;
+  }
+  
+  if (!user) {
+    return <Navigate to="/auth" />;
+  }
+  
   return <>{children}</>;
 };
 
@@ -106,7 +125,11 @@ function App() {
                   <Route path="checkout" element={<Checkout />} />
                   <Route path="about" element={<About />} />
                   <Route path="contact" element={<Contact />} />
-                  <Route path="account" element={<Account />} />
+                  <Route path="account" element={
+                    <ProtectedUserRoute>
+                      <Account />
+                    </ProtectedUserRoute>
+                  } />
                   <Route path="auth" element={<Auth />} />
                   <Route path="*" element={<NotFound />} />
                 </Route>
@@ -117,7 +140,9 @@ function App() {
                   path="/admin" 
                   element={
                     <ProtectedRoute>
-                      <AdminLayout />
+                      <AdminLayout>
+                        <Outlet />
+                      </AdminLayout>
                     </ProtectedRoute>
                   }
                 >

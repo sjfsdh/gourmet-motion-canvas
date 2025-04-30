@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface CartItem {
   id: number;
@@ -17,6 +18,7 @@ export const useCart = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
   
   useEffect(() => {
     // Load cart from localStorage on mount
@@ -45,6 +47,11 @@ export const useCart = () => {
   
   // Add item to cart
   const addToCart = (item: any, quantity = 1) => {
+    if (!item) {
+      console.error('Attempted to add undefined item to cart');
+      return;
+    }
+    
     // Extract only the fields we need from the item
     const cartItem: CartItem = {
       id: item.id,

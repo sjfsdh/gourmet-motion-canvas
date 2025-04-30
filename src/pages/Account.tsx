@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, ShoppingBag, CreditCard, Heart, Settings, LogOut, Home, Lock } from 'lucide-react';
@@ -7,6 +8,8 @@ import AnimatedSection from '@/components/animations/AnimatedSection';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { CustomButton } from '@/components/ui/custom-button';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Mock order data
 const orders = [
@@ -33,38 +36,61 @@ const orders = [
   }
 ];
 
+interface Address {
+  id: number;
+  name: string;
+  street: string;
+  city: string;
+  state: string;
+  zip: string;
+  default: boolean;
+}
+
+interface UserProfile {
+  name: string;
+  email: string;
+  phone?: string;
+}
+
 const Account = () => {
-  const [user, setUser] = useState<any>(null);
+  const { user, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
-  const [addresses, setAddresses] = useState([
+  const [addresses, setAddresses] = useState<Address[]>([
     { id: 1, name: 'Home', street: '123 Main St', city: 'New York', state: 'NY', zip: '10001', default: true },
     { id: 2, name: 'Work', street: '456 Park Ave', city: 'New York', state: 'NY', zip: '10022', default: false }
   ]);
+  const [profile, setProfile] = useState<UserProfile>({
+    name: '',
+    email: '',
+    phone: ''
+  });
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [showAddAddressForm, setShowAddAddressForm] = useState(false);
+  const [newAddress, setNewAddress] = useState<Omit<Address, 'id' | 'default'>>({
+    name: '',
+    street: '',
+    city: '',
+    state: '',
+    zip: ''
+  });
+  
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if user is logged in
-    const userStr = localStorage.getItem('user');
-    if (!userStr) {
-      navigate('/auth');
-      return;
+    if (user) {
+      // Get user metadata
+      const metadata = user.user_metadata || {};
+      setProfile({
+        name: metadata.full_name || user.email?.split('@')[0] || '',
+        email: user.email || '',
+        phone: metadata.phone || ''
+      });
     }
-    
-    try {
-      const userData = JSON.parse(userStr);
-      setUser(userData);
-    } catch (error) {
-      console.error("Error parsing user data:", error);
-      localStorage.removeItem('user');
-      localStorage.removeItem('authToken');
-      navigate('/auth');
-    }
-  }, [navigate]);
+  }, [user]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('authToken');
+  const handleLogout = async () => {
+    await signOut();
     
     toast({
       title: "Logged out successfully",
@@ -74,14 +100,96 @@ const Account = () => {
     navigate('/');
   };
 
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          full_name: profile.name,
+          phone: profile.phone
+        }
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been updated successfully",
+      });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast({
+        title: "Update Failed",
+        description: "There was an error updating your profile",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleAddAddress = () => {
+    if (!showAddAddressForm) {
+      setShowAddAddressForm(true);
+      return;
+    }
+    
+    // Validate form
+    if (!newAddress.name || !newAddress.street || !newAddress.city || !newAddress.state || !newAddress.zip) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all address fields",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const newId = Math.max(...addresses.map(addr => addr.id), 0) + 1;
+    const addressToAdd = {
+      ...newAddress,
+      id: newId,
+      default: addresses.length === 0
+    };
+    
+    setAddresses([...addresses, addressToAdd]);
+    setNewAddress({
+      name: '',
+      street: '',
+      city: '',
+      state: '',
+      zip: ''
+    });
+    setShowAddAddressForm(false);
+    
     toast({
-      title: "Feature Coming Soon",
-      description: "Address management will be available soon.",
+      title: "Address Added",
+      description: "Your new address has been added successfully",
     });
   };
 
-  const handleSetDefaultAddress = (id) => {
+  const handleRemoveAddress = (id: number) => {
+    const addressToRemove = addresses.find(addr => addr.id === id);
+    const wasDefault = addressToRemove?.default || false;
+    
+    const filteredAddresses = addresses.filter(addr => addr.id !== id);
+    
+    // If the removed address was default and we have other addresses,
+    // make the first one default
+    if (wasDefault && filteredAddresses.length > 0) {
+      filteredAddresses[0].default = true;
+    }
+    
+    setAddresses(filteredAddresses);
+    
+    toast({
+      title: "Address Removed",
+      description: "The address has been removed from your account",
+    });
+  };
+
+  const handleSetDefaultAddress = (id: number) => {
     setAddresses(addresses.map(addr => ({
       ...addr,
       default: addr.id === id
@@ -90,6 +198,20 @@ const Account = () => {
     toast({
       title: "Default Address Updated",
       description: "Your default address has been updated.",
+    });
+  };
+
+  const handleUpdatePassword = () => {
+    toast({
+      title: "Password Update",
+      description: "This functionality will be implemented soon.",
+    });
+  };
+  
+  const handleAddPaymentMethod = () => {
+    toast({
+      title: "Coming Soon",
+      description: "Payment method management will be available soon.",
     });
   };
 
@@ -128,8 +250,8 @@ const Account = () => {
                   <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mb-4">
                     <User size={40} className="text-gray-500" />
                   </div>
-                  <h2 className="text-xl font-semibold">{user.name}</h2>
-                  <p className="text-gray-500">{user.email}</p>
+                  <h2 className="text-xl font-semibold">{profile.name}</h2>
+                  <p className="text-gray-500">{profile.email}</p>
                 </div>
                 
                 <div className="space-y-2">
@@ -164,7 +286,8 @@ const Account = () => {
                           <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
                           <input
                             type="text"
-                            defaultValue={user.name}
+                            value={profile.name}
+                            onChange={(e) => setProfile({...profile, name: e.target.value})}
                             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
                           />
                         </div>
@@ -173,22 +296,31 @@ const Account = () => {
                           <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                           <input
                             type="email"
-                            defaultValue={user.email}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
+                            value={profile.email}
+                            disabled
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md bg-gray-50 focus:outline-none cursor-not-allowed"
                           />
+                          <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
                         </div>
                         
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
                           <input
                             type="text"
+                            value={profile.phone || ''}
+                            onChange={(e) => setProfile({...profile, phone: e.target.value})}
                             placeholder="Add your phone number"
                             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
                           />
                         </div>
                         
                         <div className="pt-4">
-                          <CustomButton>Save Changes</CustomButton>
+                          <CustomButton 
+                            onClick={handleSaveProfile} 
+                            disabled={isUpdating}
+                          >
+                            {isUpdating ? 'Saving...' : 'Save Changes'}
+                          </CustomButton>
                         </div>
                       </div>
                     </CardContent>
@@ -263,9 +395,75 @@ const Account = () => {
                       <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-semibold">Saved Addresses</h2>
                         <CustomButton onClick={handleAddAddress} size="sm">
-                          Add New Address
+                          {showAddAddressForm ? 'Save New Address' : 'Add New Address'}
                         </CustomButton>
                       </div>
+                      
+                      {showAddAddressForm && (
+                        <div className="border border-gray-200 rounded-lg p-4 mb-6 bg-gray-50">
+                          <h3 className="font-medium mb-3">New Address</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Address Name</label>
+                              <input
+                                type="text"
+                                placeholder="Home, Work, etc."
+                                value={newAddress.name}
+                                onChange={(e) => setNewAddress({...newAddress, name: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
+                              <input
+                                type="text"
+                                placeholder="123 Main St"
+                                value={newAddress.street}
+                                onChange={(e) => setNewAddress({...newAddress, street: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                              <input
+                                type="text"
+                                placeholder="City"
+                                value={newAddress.city}
+                                onChange={(e) => setNewAddress({...newAddress, city: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                              <input
+                                type="text"
+                                placeholder="State"
+                                value={newAddress.state}
+                                onChange={(e) => setNewAddress({...newAddress, state: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">ZIP Code</label>
+                              <input
+                                type="text"
+                                placeholder="ZIP"
+                                value={newAddress.zip}
+                                onChange={(e) => setNewAddress({...newAddress, zip: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex justify-end space-x-2">
+                            <CustomButton 
+                              variant="outline" 
+                              onClick={() => setShowAddAddressForm(false)}
+                            >
+                              Cancel
+                            </CustomButton>
+                          </div>
+                        </div>
+                      )}
                       
                       <div className="space-y-4">
                         {addresses.map((address) => (
@@ -286,8 +484,13 @@ const Account = () => {
                                 </p>
                               </div>
                               <div className="flex space-x-2">
-                                <button className="text-gray-500 hover:text-blue-600">
-                                  <Settings size={16} />
+                                <button 
+                                  className="text-gray-500 hover:text-red-600"
+                                  onClick={() => handleRemoveAddress(address.id)}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
                                 </button>
                               </div>
                             </div>
@@ -302,6 +505,14 @@ const Account = () => {
                             )}
                           </div>
                         ))}
+                        
+                        {addresses.length === 0 && !showAddAddressForm && (
+                          <div className="text-center py-8">
+                            <Home className="mx-auto text-gray-400 mb-3" size={48} />
+                            <p className="text-lg font-medium text-gray-600 mb-2">No addresses yet</p>
+                            <p className="text-gray-500 mb-4">Add an address for faster checkout.</p>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -331,7 +542,7 @@ const Account = () => {
                         <CreditCard className="mx-auto text-gray-400 mb-3" size={48} />
                         <p className="text-lg font-medium text-gray-600 mb-2">No payment methods yet</p>
                         <p className="text-gray-500 mb-4">Add a payment method for faster checkout.</p>
-                        <CustomButton>
+                        <CustomButton onClick={handleAddPaymentMethod}>
                           Add Payment Method
                         </CustomButton>
                       </div>
@@ -370,15 +581,15 @@ const Account = () => {
                         </div>
                         
                         <div className="pt-4">
-                          <CustomButton>Update Password</CustomButton>
+                          <CustomButton onClick={handleUpdatePassword}>Update Password</CustomButton>
                         </div>
                         
                         <div className="border-t border-gray-200 pt-6 mt-6">
                           <h3 className="font-medium mb-2">Login History</h3>
                           <div className="text-sm text-gray-500">
                             <p>Last login: {new Date().toLocaleString()}</p>
-                            <p>Device: Chrome on Windows</p>
-                            <p>Location: New York, USA</p>
+                            <p>Device: Browser on {navigator.platform}</p>
+                            <p>Location: Unknown</p>
                           </div>
                         </div>
                       </div>

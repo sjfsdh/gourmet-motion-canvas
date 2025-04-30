@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -16,15 +17,15 @@ import {
   Tag
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
-// Remove children prop since it's being passed via Outlet
-const AdminLayout = () => {
+const AdminLayout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signOut } = useAuth();
   
   const menuItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
@@ -35,25 +36,17 @@ const AdminLayout = () => {
     { name: 'Settings', path: '/admin/settings', icon: Settings },
   ];
   
-  useEffect(() => {
-    // Check if admin is logged in
-    const token = localStorage.getItem('adminToken');
-    if (!token) {
-      navigate('/admin/login');
-    } else {
-      setIsAdmin(true);
-    }
-  }, [navigate]);
-
-  const handleLogout = () => {
-    // Handle logout logic here
-    localStorage.removeItem('adminToken');
+  const handleLogout = async () => {
+    await signOut();
     toast({
       title: "Logged Out",
       description: "You have been logged out successfully",
     });
     navigate('/admin/login');
   };
+  
+  // Get admin user data
+  const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{"name":"Admin User","email":"admin@example.com"}');
   
   return (
     <div className="flex h-screen bg-gray-100">
@@ -143,7 +136,7 @@ const AdminLayout = () => {
                   <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-gray-700">
                     <User size={16} />
                   </div>
-                  <span className="ml-2 mr-1 hidden sm:block">Admin User</span>
+                  <span className="ml-2 mr-1 hidden sm:block">{adminUser?.name || 'Admin User'}</span>
                   <ChevronDown size={16} />
                 </motion.button>
 
@@ -173,8 +166,8 @@ const AdminLayout = () => {
         </header>
         
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-gray-100">
-          {isAdmin ? <Outlet /> : <div className="p-8 text-center">Loading...</div>}
+        <main className="flex-1 overflow-y-auto bg-gray-100 p-6">
+          {children || <Outlet />}
         </main>
       </div>
       
