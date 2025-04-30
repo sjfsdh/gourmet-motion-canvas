@@ -1,9 +1,10 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Plus, ShoppingCart } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 import { CustomButton } from '@/components/ui/custom-button';
 import { useNavigate } from 'react-router-dom';
+import { useCart } from '@/hooks/useCart';
 import { useToast } from '@/hooks/use-toast';
 
 interface MenuItemProps {
@@ -16,47 +17,27 @@ interface MenuItemProps {
     featured?: boolean;
     category?: string;
   };
-  onAddToCart: (item: any) => void;
+  onAddToCart?: (item: any) => void;
 }
 
 const MenuItem: React.FC<MenuItemProps> = ({ item, onAddToCart }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { addToCart } = useCart();
 
   const handleAddToCart = () => {
-    // Get existing cart from localStorage or initialize empty array
-    const existingCart = JSON.parse(localStorage.getItem('cart') || '[]');
+    // Use the hook's addToCart function
+    addToCart(item);
     
-    // Check if item is already in cart
-    const itemIndex = existingCart.findIndex((cartItem: any) => cartItem.id === item.id);
-    
-    if (itemIndex !== -1) {
-      // Item exists, increment quantity
-      existingCart[itemIndex].quantity += 1;
-    } else {
-      // Item does not exist, add new item with quantity 1
-      existingCart.push({
-        ...item,
-        quantity: 1
-      });
+    // Also call the prop function if provided
+    if (onAddToCart) {
+      onAddToCart(item);
     }
-    
-    // Save updated cart to localStorage
-    localStorage.setItem('cart', JSON.stringify(existingCart));
-    
-    // Call the provided onAddToCart function
-    onAddToCart(item);
-    
-    // Show notification
-    toast({
-      title: "Added to Cart!",
-      description: `${item.name} has been added to your cart.`,
-    });
   };
   
   const handleOrderNow = () => {
     // Add to cart first
-    handleAddToCart();
+    addToCart(item);
     
     // Navigate to checkout
     navigate('/checkout');

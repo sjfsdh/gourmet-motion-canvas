@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface CartItem {
   id: number;
@@ -8,6 +9,8 @@ export interface CartItem {
   price: number;
   image: string;
   quantity: number;
+  description?: string;
+  category?: string;
 }
 
 export const useCart = () => {
@@ -17,19 +20,15 @@ export const useCart = () => {
   
   useEffect(() => {
     // Load cart from localStorage on mount
-    const storedCart = localStorage.getItem('cart');
-    if (storedCart) {
-      try {
-        const parsedCart = JSON.parse(storedCart);
+    try {
+      const savedCart = localStorage.getItem('cart');
+      if (savedCart) {
+        const parsedCart = JSON.parse(savedCart);
         setCart(parsedCart);
-      } catch (error) {
-        console.error('Error parsing cart from localStorage:', error);
-        // Reset cart if there's an error
-        localStorage.setItem('cart', JSON.stringify([]));
-        setCart([]);
       }
-    } else {
-      // Initialize empty cart if not present
+    } catch (error) {
+      console.error('Error parsing cart from localStorage:', error);
+      // Reset cart if there's an error
       localStorage.setItem('cart', JSON.stringify([]));
       setCart([]);
     }
@@ -46,6 +45,17 @@ export const useCart = () => {
   
   // Add item to cart
   const addToCart = (item: any, quantity = 1) => {
+    // Extract only the fields we need from the item
+    const cartItem: CartItem = {
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      image: item.image || '',
+      quantity: quantity,
+      description: item.description,
+      category: item.category
+    };
+    
     setCart(currentCart => {
       // Check if item already exists
       const existingItemIndex = currentCart.findIndex(cartItem => cartItem.id === item.id);
@@ -57,7 +67,7 @@ export const useCart = () => {
         return updatedCart;
       } else {
         // Item doesn't exist, add new item
-        return [...currentCart, { ...item, quantity }];
+        return [...currentCart, cartItem];
       }
     });
     

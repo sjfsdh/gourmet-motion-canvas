@@ -1,8 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, ShoppingCart, User, Search } from 'lucide-react';
 import { CustomButton } from '@/components/ui/custom-button';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCart } from '@/hooks/useCart';
 
 const navLinks = [
   { name: 'Home', path: '/' },
@@ -38,11 +41,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, isAdmin } = useAuth();
+  const { itemCount } = useCart();
   
-  // Check if user is logged in
-  const isLoggedIn = localStorage.getItem('authToken') !== null;
-  const isAdmin = localStorage.getItem('adminToken') !== null;
-
   useEffect(() => {
     const handleScroll = () => {
       const isScrolled = window.scrollY > 10;
@@ -128,9 +129,13 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             </motion.button>
             <Link to="/cart" className="text-gray-700 hover:text-blue-600 transition-colors relative">
               <ShoppingCart size={20} />
-              <span className="absolute -top-1 -right-1 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">2</span>
+              {itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                  {itemCount}
+                </span>
+              )}
             </Link>
-            {isLoggedIn ? (
+            {user ? (
               <Link to="/account" className="text-gray-700 hover:text-blue-600 transition-colors">
                 <User size={20} />
               </Link>
@@ -150,7 +155,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           <div className="md:hidden flex items-center space-x-4">
             <Link to="/cart" className="text-gray-700 hover:text-blue-600 relative">
               <ShoppingCart size={20} />
-              <span className="absolute -top-1 -right-1 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">2</span>
+              {itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                  {itemCount}
+                </span>
+              )}
             </Link>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -183,7 +192,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                     {link.name}
                   </Link>
                 ))}
-                {isLoggedIn ? (
+                {user ? (
                   <Link 
                     to="/account" 
                     className="text-gray-700 hover:text-blue-600 transition-colors duration-300 py-2 border-b border-gray-100 flex items-center"

@@ -13,6 +13,7 @@ interface MenuGridProps {
   showFeatured?: boolean;
   isLoading?: boolean;
   error?: any;
+  columns?: number;
 }
 
 const MenuGrid: React.FC<MenuGridProps> = ({ 
@@ -22,7 +23,8 @@ const MenuGrid: React.FC<MenuGridProps> = ({
   onClearFilters,
   showFeatured = false,
   isLoading = false,
-  error = null
+  error = null,
+  columns = 3 // Default to 3 columns
 }) => {
   // Display loading state
   if (isLoading) {
@@ -89,6 +91,9 @@ const MenuGrid: React.FC<MenuGridProps> = ({
     );
   }
 
+  // Determine the grid columns class based on the columns prop
+  const gridClass = `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${columns} gap-6`;
+
   return (
     <div>
       {showFeatured && filteredItems.length > 0 && (
@@ -103,7 +108,7 @@ const MenuGrid: React.FC<MenuGridProps> = ({
       
       <motion.div 
         layout
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+        className={gridClass}
       >
         <AnimatePresence>
           {filteredItems.map((item) => (

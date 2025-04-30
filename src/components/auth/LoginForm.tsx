@@ -1,13 +1,14 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Lock, Eye, EyeOff, Mail } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { CustomButton } from '@/components/ui/custom-button';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 interface LoginFormProps {
-  switchToSignup?: () => void;
+  switchToSignup: () => void;
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ switchToSignup }) => {
@@ -15,50 +16,63 @@ const LoginForm: React.FC<LoginFormProps> = ({ switchToSignup }) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Here we would typically connect to a real authentication API
-    // For now, we'll simulate a login process with a timeout
-    
-    setTimeout(() => {
-      // Mock successful login
-      localStorage.setItem('authToken', 'mock-jwt-token');
-      localStorage.setItem('user', JSON.stringify({ name: 'John Doe', email }));
-      
+
+    try {
+      // Sign in the user with Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        // Check if the user is an admin
+        const isAdmin = localStorage.getItem('adminToken') !== null;
+        
+        toast({
+          title: "Login successful!",
+          description: "Welcome back!",
+        });
+        
+        // Redirect to the appropriate page
+        if (isAdmin) {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
+      }
+    } catch (error: any) {
+      console.error('Login error:', error);
+      toast({
+        title: "Login failed",
+        description: error.message || "Invalid credentials. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
       setIsLoading(false);
-      toast({
-        title: "Login successful!",
-        description: "Welcome back to DistinctGyrro",
-      });
-      
-      // Send email notification (mock)
-      toast({
-        title: "Security Alert",
-        description: "A login notification has been sent to your email",
-      });
-      
-      navigate('/account');
-    }, 1000);
+    }
   };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full mx-auto"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="bg-white p-8 rounded-lg shadow-md"
     >
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold mb-2">Welcome Back</h2>
-        <p className="text-gray-600">Sign in to continue to DistinctGyrro</p>
-      </div>
+      <h2 className="text-2xl font-bold mb-2 text-center text-gray-800">Welcome Back</h2>
+      <p className="text-gray-600 mb-6 text-center">Sign in to your account</p>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleLogin} className="space-y-4">
         <div className="space-y-4">
           <div className="relative">
             <div className="absolute left-3 top-3 text-gray-400">
@@ -69,7 +83,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ switchToSignup }) => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              placeholder="Email"
+              placeholder="Email Address"
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green transition-all"
             />
           </div>
@@ -96,43 +110,23 @@ const LoginForm: React.FC<LoginFormProps> = ({ switchToSignup }) => {
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <input
-              id="remember-me"
-              name="remember-me"
-              type="checkbox"
-              className="h-4 w-4 text-restaurant-green focus:ring-restaurant-green border-gray-300 rounded"
-            />
-            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-              Remember me
-            </label>
-          </div>
-
-          <div className="text-sm">
-            <a href="#" className="text-restaurant-green hover:text-restaurant-green/80">
-              Forgot password?
-            </a>
-          </div>
+        <div className="text-right">
+          <a href="#" className="text-sm text-restaurant-green hover:underline">
+            Forgot Password?
+          </a>
         </div>
 
-        <div>
-          <CustomButton
-            type="submit"
-            className="w-full justify-center"
-            disabled={isLoading}
-          >
-            {isLoading ? 'Signing in...' : 'Sign In'}
-          </CustomButton>
-        </div>
+        <CustomButton type="submit" className="w-full justify-center" disabled={isLoading}>
+          {isLoading ? 'Signing in...' : 'Sign In'}
+        </CustomButton>
 
-        <div className="text-center mt-4">
+        <div className="text-center">
           <p className="text-gray-600 text-sm">
             Don't have an account?{' '}
             <button
               type="button"
               onClick={switchToSignup}
-              className="text-restaurant-green hover:text-restaurant-green/80 font-medium"
+              className="text-restaurant-green hover:underline font-semibold"
             >
               Sign Up
             </button>

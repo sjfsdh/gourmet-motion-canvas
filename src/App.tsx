@@ -18,6 +18,7 @@ import Contact from "./pages/Contact";
 import Account from "./pages/Account";
 import NotFound from "./pages/NotFound";
 import { initializeDatabase, seedDatabaseIfEmpty } from "./services/dbInitService";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 // Admin imports
 import AdminLayout from "./components/admin/AdminLayout";
@@ -41,23 +42,16 @@ const queryClient = new QueryClient({
 });
 
 // Create Protected Route component for admin routes
-// Fixed: Properly typed with ReactNode for children
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const { isAdmin, isLoading } = useAuth();
   
-  useEffect(() => {
-    // Check if admin token exists in localStorage
-    const adminToken = localStorage.getItem('adminToken');
-    setIsAuthenticated(!!adminToken);
-  }, []);
-  
-  if (isAuthenticated === null) {
+  if (isLoading) {
     // Still loading
     return <div>Loading...</div>;
   }
   
-  if (isAuthenticated === false) {
-    // Not authenticated, redirect to login
+  if (!isAdmin) {
+    // Not authenticated as admin, redirect to login
     return <Navigate to="/admin/login" />;
   }
   
@@ -100,45 +94,47 @@ function App() {
     <LazyMotion features={domMax}>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <BrowserRouter>
-            <ScrollToTop />
-            <Routes>
-              {/* Main website routes */}
-              <Route path="/" element={<Layout><Outlet /></Layout>}>
-                <Route index element={<Index />} />
-                <Route path="menu" element={<Menu />} />
-                <Route path="cart" element={<Cart />} />
-                <Route path="checkout" element={<Checkout />} />
-                <Route path="about" element={<About />} />
-                <Route path="contact" element={<Contact />} />
-                <Route path="account" element={<Account />} />
-                <Route path="auth" element={<Auth />} />
-                <Route path="*" element={<NotFound />} />
-              </Route>
+          <AuthProvider>
+            <BrowserRouter>
+              <ScrollToTop />
+              <Routes>
+                {/* Main website routes */}
+                <Route path="/" element={<Layout><Outlet /></Layout>}>
+                  <Route index element={<Index />} />
+                  <Route path="menu" element={<Menu />} />
+                  <Route path="cart" element={<Cart />} />
+                  <Route path="checkout" element={<Checkout />} />
+                  <Route path="about" element={<About />} />
+                  <Route path="contact" element={<Contact />} />
+                  <Route path="account" element={<Account />} />
+                  <Route path="auth" element={<Auth />} />
+                  <Route path="*" element={<NotFound />} />
+                </Route>
 
-              {/* Admin routes */}
-              <Route path="/admin/login" element={<AdminAuth />} />
-              <Route 
-                path="/admin" 
-                element={
-                  <ProtectedRoute>
-                    <AdminLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route index element={<Dashboard />} />
-                <Route path="menu" element={<MenuManager />} />
-                <Route path="categories" element={<CategoryManager />} />
-                <Route path="orders" element={<OrderManager />} />
-                <Route path="gallery" element={<GalleryManager />} />
-                <Route path="settings" element={<AdminSettings />} />
-                <Route path="profile" element={<AdminProfile />} />
-              </Route>
-            </Routes>
+                {/* Admin routes */}
+                <Route path="/admin/login" element={<AdminAuth />} />
+                <Route 
+                  path="/admin" 
+                  element={
+                    <ProtectedRoute>
+                      <AdminLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route index element={<Dashboard />} />
+                  <Route path="menu" element={<MenuManager />} />
+                  <Route path="categories" element={<CategoryManager />} />
+                  <Route path="orders" element={<OrderManager />} />
+                  <Route path="gallery" element={<GalleryManager />} />
+                  <Route path="settings" element={<AdminSettings />} />
+                  <Route path="profile" element={<AdminProfile />} />
+                </Route>
+              </Routes>
 
-            <Toaster />
-            <Sonner position="top-right" />
-          </BrowserRouter>
+              <Toaster />
+              <Sonner position="top-right" />
+            </BrowserRouter>
+          </AuthProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </LazyMotion>

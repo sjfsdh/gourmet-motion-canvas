@@ -1,534 +1,215 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Bell, Lock, Globe, Save } from 'lucide-react';
+import { Save, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { CustomButton } from '@/components/ui/custom-button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
-import { getRestaurantSettings, updateRestaurantSettings, RestaurantSettings } from '@/services/settingsService';
+import { supabase } from '@/integrations/supabase/client';
+import { getRestaurantSettings, updateRestaurantSettings } from '@/services/settingsService';
 
-const AdminSettings = () => {
+interface SettingsFormData {
+  restaurant_name: string;
+  restaurant_address: string;
+  restaurant_phone: string;
+  restaurant_email: string;
+  opening_hours: string;
+}
+
+const AdminSettings: React.FC = () => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [settingsId, setSettingsId] = useState<number | null>(null);
+  const [formData, setFormData] = useState<SettingsFormData>({
+    restaurant_name: '',
+    restaurant_address: '',
+    restaurant_phone: '',
+    restaurant_email: '',
+    opening_hours: '',
+  });
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("general");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  
-  const [generalSettings, setGeneralSettings] = useState<RestaurantSettings>({
-    id: 1,
-    restaurant_name: "DistinctGyrro",
-    restaurant_address: "123 Main Street, City, Country",
-    restaurant_phone: "+1 (123) 456-7890",
-    restaurant_email: "info@distinctgyrro.com",
-    opening_hours: "Mon-Fri: 11am-10pm, Sat-Sun: 10am-11pm"
-  });
-  
-  const [emailSettings, setEmailSettings] = useState({
-    smtpServer: "smtp.example.com",
-    smtpPort: "587",
-    smtpUsername: "notifications@distinctgyrro.com",
-    smtpPassword: "••••••••••••",
-    fromEmail: "notifications@distinctgyrro.com",
-    fromName: "DistinctGyrro Restaurant"
-  });
-  
-  const [notificationSettings, setNotificationSettings] = useState({
-    orderNotifications: true,
-    reservationNotifications: true,
-    reviewNotifications: false,
-    marketingEmails: false,
-    dailySummary: true
-  });
-  
-  const [accountSettings, setAccountSettings] = useState({
-    adminUsername: "admin",
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: ""
-  });
 
-  // Fetch restaurant settings when component mounts
+  // Fetch settings on component mount
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        setLoading(true);
+        setIsLoading(true);
         const settings = await getRestaurantSettings();
         
         if (settings) {
-          setGeneralSettings(settings);
+          setSettingsId(settings.id);
+          setFormData({
+            restaurant_name: settings.restaurant_name || '',
+            restaurant_address: settings.restaurant_address || '',
+            restaurant_phone: settings.restaurant_phone || '',
+            restaurant_email: settings.restaurant_email || '',
+            opening_hours: settings.opening_hours || '',
+          });
         }
       } catch (error) {
         console.error('Error fetching settings:', error);
         toast({
-          title: "Failed to Load Settings",
-          description: "Could not load restaurant settings. Please try again.",
-          variant: "destructive"
+          title: 'Error',
+          description: 'Failed to load restaurant settings.',
+          variant: 'destructive',
         });
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
-    
+
     fetchSettings();
   }, [toast]);
 
-  const handleSaveGeneralSettings = async () => {
-    try {
-      setSaving(true);
-      const updated = await updateRestaurantSettings(generalSettings.id, {
-        restaurant_name: generalSettings.restaurant_name,
-        restaurant_address: generalSettings.restaurant_address,
-        restaurant_phone: generalSettings.restaurant_phone,
-        restaurant_email: generalSettings.restaurant_email,
-        opening_hours: generalSettings.opening_hours
+  // Handle form input changes
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!settingsId) {
+      toast({
+        title: 'Error',
+        description: 'Settings ID not found.',
+        variant: 'destructive',
       });
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const updatedSettings = await updateRestaurantSettings(settingsId, formData);
       
-      if (updated) {
-        setGeneralSettings(updated);
+      if (updatedSettings) {
         toast({
-          title: "Settings Saved",
-          description: "General settings have been updated successfully."
+          title: 'Success',
+          description: 'Restaurant settings have been updated.',
         });
+      } else {
+        throw new Error('Failed to update settings');
       }
     } catch (error) {
       console.error('Error saving settings:', error);
       toast({
-        title: "Failed to Save Settings",
-        description: "Could not save changes. Please try again.",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Failed to save restaurant settings.',
+        variant: 'destructive',
       });
     } finally {
-      setSaving(false);
+      setIsSaving(false);
     }
   };
 
-  const handleSaveEmailSettings = () => {
-    toast({
-      title: "Email Settings Saved",
-      description: "Email configuration has been updated successfully."
-    });
-  };
-  
-  const handleSaveNotificationSettings = () => {
-    toast({
-      title: "Notification Preferences Saved",
-      description: "Your notification preferences have been updated."
-    });
-  };
-  
-  const handleSaveAccountSettings = () => {
-    if (accountSettings.newPassword !== accountSettings.confirmPassword) {
-      toast({
-        title: "Password Error",
-        description: "New passwords do not match.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (accountSettings.currentPassword === "") {
-      toast({
-        title: "Current Password Required",
-        description: "Please enter your current password.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    toast({
-      title: "Account Settings Saved",
-      description: "Your account information has been updated."
-    });
-    
-    setAccountSettings({
-      ...accountSettings,
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: ""
-    });
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="p-6 flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-restaurant-green"></div>
+      <div className="flex items-center justify-center h-full p-8">
+        <Loader2 size={40} className="animate-spin text-gray-400" />
       </div>
     );
   }
 
   return (
     <div className="p-6">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-1">Admin Settings</h1>
-        <p className="text-gray-500">Configure your restaurant settings</p>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Restaurant Settings</h1>
       </div>
-      
-      <Tabs defaultValue="general" value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-4 mb-6">
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="email">Email</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="account">Account</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="general">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Restaurant Name
-                  </label>
-                  <input
-                    type="text"
-                    value={generalSettings.restaurant_name}
-                    onChange={(e) => setGeneralSettings({...generalSettings, restaurant_name: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Restaurant Address
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={generalSettings.restaurant_address}
-                    onChange={(e) => setGeneralSettings({...generalSettings, restaurant_address: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
-                  />
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Restaurant Phone
-                    </label>
-                    <input
-                      type="text"
-                      value={generalSettings.restaurant_phone}
-                      onChange={(e) => setGeneralSettings({...generalSettings, restaurant_phone: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Restaurant Email
-                    </label>
-                    <input
-                      type="email"
-                      value={generalSettings.restaurant_email}
-                      onChange={(e) => setGeneralSettings({...generalSettings, restaurant_email: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Opening Hours
-                  </label>
-                  <input
-                    type="text"
-                    value={generalSettings.opening_hours}
-                    onChange={(e) => setGeneralSettings({...generalSettings, opening_hours: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
-                  />
-                </div>
-                
-                <div className="flex justify-end">
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <CustomButton onClick={handleSaveGeneralSettings} disabled={saving}>
-                      {saving ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save size={18} className="mr-2" /> Save Settings
-                        </>
-                      )}
-                    </CustomButton>
-                  </motion.div>
-                </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white rounded-lg shadow-md p-6"
+      >
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-6">
+            <div>
+              <label htmlFor="restaurant_name" className="block text-sm font-medium text-gray-700 mb-1">
+                Restaurant Name
+              </label>
+              <input
+                type="text"
+                id="restaurant_name"
+                name="restaurant_name"
+                value={formData.restaurant_name}
+                onChange={handleChange}
+                required
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="restaurant_address" className="block text-sm font-medium text-gray-700 mb-1">
+                Address
+              </label>
+              <textarea
+                id="restaurant_address"
+                name="restaurant_address"
+                value={formData.restaurant_address}
+                onChange={handleChange}
+                rows={3}
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="restaurant_phone" className="block text-sm font-medium text-gray-700 mb-1">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  id="restaurant_phone"
+                  name="restaurant_phone"
+                  value={formData.restaurant_phone}
+                  onChange={handleChange}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="email">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      SMTP Server
-                    </label>
-                    <input
-                      type="text"
-                      value={emailSettings.smtpServer}
-                      onChange={(e) => setEmailSettings({...emailSettings, smtpServer: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      SMTP Port
-                    </label>
-                    <input
-                      type="text"
-                      value={emailSettings.smtpPort}
-                      onChange={(e) => setEmailSettings({...emailSettings, smtpPort: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      SMTP Username
-                    </label>
-                    <input
-                      type="text"
-                      value={emailSettings.smtpUsername}
-                      onChange={(e) => setEmailSettings({...emailSettings, smtpUsername: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      SMTP Password
-                    </label>
-                    <input
-                      type="password"
-                      value={emailSettings.smtpPassword}
-                      onChange={(e) => setEmailSettings({...emailSettings, smtpPassword: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      From Email
-                    </label>
-                    <input
-                      type="email"
-                      value={emailSettings.fromEmail}
-                      onChange={(e) => setEmailSettings({...emailSettings, fromEmail: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      From Name
-                    </label>
-                    <input
-                      type="text"
-                      value={emailSettings.fromName}
-                      onChange={(e) => setEmailSettings({...emailSettings, fromName: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex justify-end">
-                  <CustomButton onClick={handleSaveEmailSettings}>
-                    <Mail size={18} className="mr-2" /> Save Email Settings
-                  </CustomButton>
-                </div>
+              
+              <div>
+                <label htmlFor="restaurant_email" className="block text-sm font-medium text-gray-700 mb-1">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  id="restaurant_email"
+                  name="restaurant_email"
+                  value={formData.restaurant_email}
+                  onChange={handleChange}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="notifications">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">Order Notifications</h3>
-                    <p className="text-sm text-gray-500">Receive notifications for new orders</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={notificationSettings.orderNotifications}
-                      onChange={() => setNotificationSettings({
-                        ...notificationSettings, 
-                        orderNotifications: !notificationSettings.orderNotifications
-                      })}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-restaurant-green peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-restaurant-green"></div>
-                  </label>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">Reservation Notifications</h3>
-                    <p className="text-sm text-gray-500">Receive notifications for new reservations</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={notificationSettings.reservationNotifications}
-                      onChange={() => setNotificationSettings({
-                        ...notificationSettings, 
-                        reservationNotifications: !notificationSettings.reservationNotifications
-                      })}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-restaurant-green peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-restaurant-green"></div>
-                  </label>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">Review Notifications</h3>
-                    <p className="text-sm text-gray-500">Receive notifications for new reviews</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={notificationSettings.reviewNotifications}
-                      onChange={() => setNotificationSettings({
-                        ...notificationSettings, 
-                        reviewNotifications: !notificationSettings.reviewNotifications
-                      })}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-restaurant-green peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-restaurant-green"></div>
-                  </label>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">Marketing Emails</h3>
-                    <p className="text-sm text-gray-500">Receive marketing and promotional emails</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={notificationSettings.marketingEmails}
-                      onChange={() => setNotificationSettings({
-                        ...notificationSettings, 
-                        marketingEmails: !notificationSettings.marketingEmails
-                      })}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-restaurant-green peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-restaurant-green"></div>
-                  </label>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">Daily Summary</h3>
-                    <p className="text-sm text-gray-500">Receive daily summary emails</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={notificationSettings.dailySummary}
-                      onChange={() => setNotificationSettings({
-                        ...notificationSettings, 
-                        dailySummary: !notificationSettings.dailySummary
-                      })}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-restaurant-green peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-restaurant-green"></div>
-                  </label>
-                </div>
-                
-                <div className="flex justify-end">
-                  <CustomButton onClick={handleSaveNotificationSettings}>
-                    <Bell size={18} className="mr-2" /> Save Notification Preferences
-                  </CustomButton>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="account">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Admin Username
-                  </label>
-                  <input
-                    type="text"
-                    value={accountSettings.adminUsername}
-                    onChange={(e) => setAccountSettings({...accountSettings, adminUsername: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Current Password
-                  </label>
-                  <input
-                    type="password"
-                    value={accountSettings.currentPassword}
-                    onChange={(e) => setAccountSettings({...accountSettings, currentPassword: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
-                    placeholder="Enter current password to confirm changes"
-                  />
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      New Password
-                    </label>
-                    <input
-                      type="password"
-                      value={accountSettings.newPassword}
-                      onChange={(e) => setAccountSettings({...accountSettings, newPassword: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
-                      placeholder="Leave blank to keep current password"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Confirm New Password
-                    </label>
-                    <input
-                      type="password"
-                      value={accountSettings.confirmPassword}
-                      onChange={(e) => setAccountSettings({...accountSettings, confirmPassword: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
-                      placeholder="Confirm new password"
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex justify-end">
-                  <CustomButton onClick={handleSaveAccountSettings}>
-                    <Lock size={18} className="mr-2" /> Update Account Settings
-                  </CustomButton>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </div>
+
+            <div>
+              <label htmlFor="opening_hours" className="block text-sm font-medium text-gray-700 mb-1">
+                Opening Hours
+              </label>
+              <textarea
+                id="opening_hours"
+                name="opening_hours"
+                value={formData.opening_hours}
+                onChange={handleChange}
+                rows={3}
+                placeholder="e.g., Mon-Fri: 9AM - 10PM, Sat-Sun: 10AM - 11PM"
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="flex justify-end">
+              <CustomButton 
+                type="submit" 
+                disabled={isSaving}
+                icon={isSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+              >
+                {isSaving ? 'Saving...' : 'Save Settings'}
+              </CustomButton>
+            </div>
+          </div>
+        </form>
+      </motion.div>
     </div>
   );
 };
