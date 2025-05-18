@@ -52,6 +52,7 @@ const TeamSection: React.FC = () => {
           </div>
         </AnimatedSection>
 
+        {/* Updated to display team members in a responsive grid - similar to MenuGrid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           <StaggeredItems animation="fadeIn">
             {teamMembers.map((member) => (
