@@ -1,10 +1,10 @@
 
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
-import { useEffect, useState } from "react";
 import { LazyMotion, domMax } from "framer-motion";
 import Layout from "./components/Layout";
 import ScrollToTop from "./components/ScrollToTop";
@@ -80,10 +80,11 @@ const ProtectedUserRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-function App() {
-  const [loading, setLoading] = useState(true);
+// Separate init component to handle loading state
+const AppInit = () => {
+  const [loading, setLoading] = React.useState(true);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const initApp = async () => {
       try {
         // Initialize database
@@ -112,59 +113,67 @@ function App() {
   }
 
   return (
-    <LazyMotion features={domMax}>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <AuthProvider>
-            <BrowserRouter>
-              <ScrollToTop />
-              <Routes>
-                {/* Main website routes */}
-                <Route path="/" element={<Layout><Outlet /></Layout>}>
-                  <Route index element={<Index />} />
-                  <Route path="menu" element={<Menu />} />
-                  <Route path="cart" element={<Cart />} />
-                  <Route path="checkout" element={<Checkout />} />
-                  <Route path="about" element={<About />} />
-                  <Route path="contact" element={<Contact />} />
-                  <Route path="account" element={
-                    <ProtectedUserRoute>
-                      <Account />
-                    </ProtectedUserRoute>
-                  } />
-                  <Route path="auth" element={<Auth />} />
-                  <Route path="*" element={<NotFound />} />
-                </Route>
+    <Routes>
+      {/* Main website routes */}
+      <Route path="/" element={<Layout><Outlet /></Layout>}>
+        <Route index element={<Index />} />
+        <Route path="menu" element={<Menu />} />
+        <Route path="cart" element={<Cart />} />
+        <Route path="checkout" element={<Checkout />} />
+        <Route path="about" element={<About />} />
+        <Route path="contact" element={<Contact />} />
+        <Route path="account" element={
+          <ProtectedUserRoute>
+            <Account />
+          </ProtectedUserRoute>
+        } />
+        <Route path="auth" element={<Auth />} />
+        <Route path="*" element={<NotFound />} />
+      </Route>
 
-                {/* Admin routes */}
-                <Route path="/admin/login" element={<AdminAuth />} />
-                <Route 
-                  path="/admin" 
-                  element={
-                    <ProtectedRoute>
-                      <AdminLayout>
-                        <Outlet />
-                      </AdminLayout>
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route index element={<Dashboard />} />
-                  <Route path="menu" element={<MenuManager />} />
-                  <Route path="categories" element={<CategoryManager />} />
-                  <Route path="orders" element={<OrderManager />} />
-                  <Route path="gallery" element={<GalleryManager />} />
-                  <Route path="settings" element={<AdminSettings />} />
-                  <Route path="profile" element={<AdminProfile />} />
-                </Route>
-              </Routes>
+      {/* Admin routes */}
+      <Route path="/admin/login" element={<AdminAuth />} />
+      <Route 
+        path="/admin" 
+        element={
+          <ProtectedRoute>
+            <AdminLayout>
+              <Outlet />
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Dashboard />} />
+        <Route path="menu" element={<MenuManager />} />
+        <Route path="categories" element={<CategoryManager />} />
+        <Route path="orders" element={<OrderManager />} />
+        <Route path="gallery" element={<GalleryManager />} />
+        <Route path="settings" element={<AdminSettings />} />
+        <Route path="profile" element={<AdminProfile />} />
+      </Route>
+    </Routes>
+  );
+};
 
-              <Toaster />
-              <Sonner position="top-right" />
-            </BrowserRouter>
-          </AuthProvider>
-        </TooltipProvider>
-      </QueryClientProvider>
-    </LazyMotion>
+// Main App component
+function App() {
+  return (
+    <React.StrictMode>
+      <LazyMotion features={domMax}>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <AuthProvider>
+              <BrowserRouter>
+                <ScrollToTop />
+                <AppInit />
+                <Toaster />
+                <Sonner position="top-right" />
+              </BrowserRouter>
+            </AuthProvider>
+          </TooltipProvider>
+        </QueryClientProvider>
+      </LazyMotion>
+    </React.StrictMode>
   );
 }
 
