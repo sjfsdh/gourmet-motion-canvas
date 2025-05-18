@@ -4,38 +4,7 @@ import { motion } from 'framer-motion';
 import { Award, Heart, Users } from 'lucide-react';
 import AnimatedSection from '@/components/animations/AnimatedSection';
 import StaggeredItems from '@/components/animations/StaggeredItems';
-
-// Team members data
-const teamMembers = [
-  {
-    id: 1,
-    name: 'Emily Chen',
-    role: 'Executive Chef',
-    image: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
-    description: "With over 15 years of experience in fine dining, Emily brings creative vision and technical excellence to our menu."
-  },
-  {
-    id: 2,
-    name: 'Marcus Johnson',
-    role: 'Restaurant Manager',
-    image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
-    description: "Marcus ensures that every guest receives exceptional service and leaves with unforgettable memories."
-  },
-  {
-    id: 3,
-    name: 'Sophia Patel',
-    role: 'Pastry Chef',
-    image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
-    description: "Sophia's innovative desserts combine traditional techniques with modern flavors for a perfect finale to every meal."
-  },
-  {
-    id: 4,
-    name: 'David Rodriguez',
-    role: 'Sommelier',
-    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
-    description: "David's expertise in wine pairing elevates our dining experience with perfect complementary selections."
-  }
-];
+import TeamSection from '@/components/team/TeamSection';
 
 // Gallery images
 const galleryImages = [
@@ -202,42 +171,8 @@ const About = () => {
         </div>
       </section>
 
-      {/* Team Section */}
-      <section className="section-padding bg-white">
-        <div className="container-custom">
-          <AnimatedSection animation="fadeIn">
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Meet Our Team</h2>
-            <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
-              Our talented team brings together diverse culinary backgrounds and a shared passion for creating extraordinary dining experiences.
-            </p>
-          </AnimatedSection>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <StaggeredItems animation="fadeIn">
-              {teamMembers.map((member) => (
-                <motion.div
-                  key={member.id}
-                  whileHover={{ y: -10 }}
-                  className="bg-white rounded-lg shadow-md overflow-hidden"
-                >
-                  <div className="h-64 overflow-hidden">
-                    <img
-                      src={member.image}
-                      alt={member.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="p-6">
-                    <h3 className="text-xl font-bold mb-1">{member.name}</h3>
-                    <p className="text-restaurant-terracotta mb-3">{member.role}</p>
-                    <p className="text-gray-600">{member.description}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </StaggeredItems>
-          </div>
-        </div>
-      </section>
+      {/* Owner Section - Replaced team section with owner details */}
+      <TeamSection />
 
       {/* Awards Section */}
       <section className="section-padding bg-restaurant-green text-white">
