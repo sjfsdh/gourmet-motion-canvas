@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,6 +8,7 @@ import HeroBanner from '@/components/HeroBanner';
 import FeatureCard from '@/components/FeatureCard';
 import SectionTitle from '@/components/ui/section-title';
 import { CustomButton } from '@/components/ui/custom-button';
+import MenuGrid from '@/components/menu/MenuGrid';
 
 // Mock data for featured dishes
 const featuredDishes = [
@@ -107,6 +107,16 @@ const Index = () => {
     }
   };
 
+  // Dummy function for MenuGrid component
+  const handleAddToCart = (item: any) => {
+    // This is just a placeholder, actual cart logic is handled in MenuItem component
+    console.log('Added to cart:', item);
+  };
+
+  const clearFilters = () => {
+    // No-op function for MenuGrid
+  };
+
   return (
     <div>
       {/* Hero Banner */}
@@ -124,7 +134,7 @@ const Index = () => {
         }}
       />
 
-      {/* Featured Dishes */}
+      {/* Featured Dishes - Updated to use MenuGrid */}
       <section className="section-padding bg-gradient-light">
         <div className="container-custom">
           <SectionTitle 
@@ -133,42 +143,16 @@ const Index = () => {
             animation="slideUp"
           />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <StaggeredItems animation="slideUp">
-              {featuredDishes.map((dish) => (
-                <div 
-                  key={dish.id} 
-                  className="card group overflow-hidden"
-                >
-                  <div className="h-56 overflow-hidden">
-                    <motion.img 
-                      whileHover={{ scale: 1.1 }}
-                      transition={{ duration: 0.6 }}
-                      src={dish.image} 
-                      alt={dish.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="p-5">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="text-xl font-semibold mb-2">{dish.name}</h3>
-                        <span className="text-sm text-blue-500 mb-3 inline-block">{dish.category}</span>
-                      </div>
-                      <div className="font-bold text-blue-600">${dish.price}</div>
-                    </div>
-                    <p className="text-gray-600 mb-4 text-sm line-clamp-2">{dish.description}</p>
-                    <Link 
-                      to="/menu" 
-                      className="text-link"
-                    >
-                      Order Now <ArrowRight size={16} className="ml-1 inline" />
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </StaggeredItems>
-          </div>
+          <AnimatedSection animation="fadeIn">
+            <MenuGrid 
+              items={featuredDishes} 
+              activeCategory="all" 
+              onAddToCart={handleAddToCart} 
+              onClearFilters={clearFilters}
+              showFeatured={true}
+              columns={4}
+            />
+          </AnimatedSection>
 
           <div className="text-center mt-12">
             <CustomButton variant="outline">

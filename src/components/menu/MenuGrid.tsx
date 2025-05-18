@@ -92,7 +92,21 @@ const MenuGrid: React.FC<MenuGridProps> = ({
   }
 
   // Determine the grid columns class based on the columns prop
-  const gridClass = `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${columns} gap-6`;
+  let gridClass = '';
+  
+  switch(columns) {
+    case 2:
+      gridClass = 'grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6';
+      break;
+    case 3:
+      gridClass = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6';
+      break;
+    case 4:
+      gridClass = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6';
+      break;
+    default:
+      gridClass = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6';
+  }
 
   return (
     <div>
