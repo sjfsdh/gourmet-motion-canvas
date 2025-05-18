@@ -53,10 +53,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   if (!isAdmin) {
+    console.log("User is not admin, redirecting to login");
     // Not authenticated as admin, redirect to login
     return <Navigate to="/admin/login" />;
   }
   
+  console.log("User is admin, rendering admin content");
   // Authenticated, render children
   return <>{children}</>;
 };

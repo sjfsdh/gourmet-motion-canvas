@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { CustomButton } from '@/components/ui/custom-button';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const AdminAuth = () => {
   const [email, setEmail] = useState('');
@@ -18,7 +19,8 @@ const AdminAuth = () => {
 
   // Check if already logged in
   useEffect(() => {
-    if (localStorage.getItem('adminToken')) {
+    const adminToken = localStorage.getItem('adminToken');
+    if (adminToken) {
       setIsAdmin(true);
       navigate('/admin');
     }
@@ -29,7 +31,15 @@ const AdminAuth = () => {
     setIsLoading(true);
     
     try {
-      // This is a mock admin login. In a real app, this would be authenticated against a backend
+      // Sign in with Supabase first to get authentication
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+      
+      // This is a mock admin check. In a real app, you would check against a roles table
       if (email === 'admin@example.com' && password === 'admin123') {
         localStorage.setItem('adminToken', 'mock-jwt-admin-token');
         localStorage.setItem('adminUser', JSON.stringify({ 
@@ -53,14 +63,22 @@ const AdminAuth = () => {
           description: "Invalid admin credentials",
           variant: "destructive"
         });
+        
+        // Clear any existing admin token if login fails
+        localStorage.removeItem('adminToken');
+        setIsAdmin(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Admin login error:", error);
       toast({
         title: "Login error",
-        description: "An unexpected error occurred",
+        description: error.message || "An unexpected error occurred",
         variant: "destructive"
       });
+      
+      // Clear any existing admin token if login fails
+      localStorage.removeItem('adminToken');
+      setIsAdmin(false);
     } finally {
       setIsLoading(false);
     }

@@ -2,6 +2,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
+import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   session: Session | null;
@@ -26,6 +27,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     // Check for existing session
@@ -48,6 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Set up auth state listener
     const { data: authListener } = supabase.auth.onAuthStateChange((event, newSession) => {
+      console.log("Auth state changed:", event, newSession?.user?.email);
       setSession(newSession);
       setUser(newSession?.user ?? null);
       
@@ -55,6 +58,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (event === 'SIGNED_OUT') {
         localStorage.removeItem('adminToken');
         setIsAdmin(false);
+      }
+      
+      // Special handling for admin@example.com login
+      if (event === 'SIGNED_IN' && newSession?.user?.email === 'admin@example.com') {
+        console.log("Admin user signed in");
+        localStorage.setItem('adminToken', 'mock-jwt-admin-token');
+        localStorage.setItem('adminUser', JSON.stringify({ 
+          name: 'Admin User', 
+          email: 'admin@example.com',
+          role: 'Administrator'
+        }));
+        setIsAdmin(true);
       }
     });
 
@@ -64,12 +79,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    
-    // If the user was an admin, clear the admin token
-    if (isAdmin) {
-      localStorage.removeItem('adminToken');
-      setIsAdmin(false);
+    try {
+      await supabase.auth.signOut();
+      
+      // If the user was an admin, clear the admin token
+      if (isAdmin) {
+        localStorage.removeItem('adminToken');
+        setIsAdmin(false);
+      }
+      
+      toast({
+        title: "Signed out successfully",
+        description: "You have been logged out from your account",
+      });
+    } catch (error) {
+      console.error("Error signing out:", error);
+      toast({
+        title: "Error signing out",
+        description: "There was a problem signing you out. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 

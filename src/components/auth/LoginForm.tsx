@@ -37,6 +37,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ switchToSignup }) => {
       }
 
       if (data) {
+        console.log("Login successful", data);
+        
         // For demo purposes, check if this is the admin user
         if (email === 'admin@example.com') {
           localStorage.setItem('adminToken', 'mock-jwt-admin-token');
@@ -68,6 +70,40 @@ const LoginForm: React.FC<LoginFormProps> = ({ switchToSignup }) => {
       toast({
         title: "Login failed",
         description: error.message || "Invalid credentials. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast({
+        title: "Email required",
+        description: "Please enter your email address first",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/reset-password',
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Password reset email sent",
+        description: "Please check your inbox for instructions to reset your password",
+      });
+    } catch (error: any) {
+      console.error("Password reset error:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send password reset email",
         variant: "destructive"
       });
     } finally {
@@ -124,9 +160,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ switchToSignup }) => {
         </div>
 
         <div className="text-right">
-          <a href="#" className="text-sm text-restaurant-green hover:underline">
+          <button 
+            type="button" 
+            onClick={handleForgotPassword}
+            className="text-sm text-restaurant-green hover:underline"
+          >
             Forgot Password?
-          </a>
+          </button>
         </div>
 
         <CustomButton type="submit" className="w-full justify-center" disabled={isLoading}>

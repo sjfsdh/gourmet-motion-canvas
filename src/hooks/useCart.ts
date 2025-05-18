@@ -20,10 +20,26 @@ export const useCart = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   
+  // Generate a unique cart ID for the current browser session
+  const getCartId = () => {
+    let cartId = localStorage.getItem('cartId');
+    if (!cartId) {
+      cartId = `cart_${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('cartId', cartId);
+    }
+    return cartId;
+  };
+  
+  // Get the cart storage key - either user-specific or session-specific
+  const getCartStorageKey = () => {
+    return user ? `cart_${user.id}` : `cart_${getCartId()}`;
+  };
+  
   useEffect(() => {
     // Load cart from localStorage on mount
     try {
-      const savedCart = localStorage.getItem('cart');
+      const cartKey = getCartStorageKey();
+      const savedCart = localStorage.getItem(cartKey);
       if (savedCart) {
         const parsedCart = JSON.parse(savedCart);
         setCart(parsedCart);
@@ -31,19 +47,19 @@ export const useCart = () => {
     } catch (error) {
       console.error('Error parsing cart from localStorage:', error);
       // Reset cart if there's an error
-      localStorage.setItem('cart', JSON.stringify([]));
+      localStorage.setItem(getCartStorageKey(), JSON.stringify([]));
       setCart([]);
     }
     
     setIsLoading(false);
-  }, []);
+  }, [user]);
   
   // Save cart to localStorage whenever it changes
   useEffect(() => {
     if (!isLoading) {
-      localStorage.setItem('cart', JSON.stringify(cart));
+      localStorage.setItem(getCartStorageKey(), JSON.stringify(cart));
     }
-  }, [cart, isLoading]);
+  }, [cart, isLoading, user]);
   
   // Add item to cart
   const addToCart = (item: any, quantity = 1) => {

@@ -25,7 +25,15 @@ const AdminLayout: React.FC<{ children?: React.ReactNode }> = ({ children }) => 
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signOut } = useAuth();
+  const { signOut, isAdmin } = useAuth();
+  
+  // Check if admin token exists
+  useEffect(() => {
+    const adminToken = localStorage.getItem('adminToken');
+    if (!adminToken) {
+      navigate('/admin/login');
+    }
+  }, [navigate]);
   
   const menuItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
@@ -47,6 +55,17 @@ const AdminLayout: React.FC<{ children?: React.ReactNode }> = ({ children }) => 
   
   // Get admin user data
   const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{"name":"Admin User","email":"admin@example.com"}');
+  
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-restaurant-green mx-auto mb-4"></div>
+          <p className="text-xl text-gray-600">Checking admin access...</p>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="flex h-screen bg-gray-100">
