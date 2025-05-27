@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface CartItem {
@@ -68,6 +67,8 @@ export const useCart = () => {
       return;
     }
     
+    console.log('Adding item to cart:', item);
+    
     // Extract only the fields we need from the item
     const cartItem: CartItem = {
       id: item.id,
@@ -87,16 +88,20 @@ export const useCart = () => {
         // Item exists, update quantity
         const updatedCart = [...currentCart];
         updatedCart[existingItemIndex].quantity += quantity;
+        console.log('Updated existing item quantity:', updatedCart[existingItemIndex]);
         return updatedCart;
       } else {
         // Item doesn't exist, add new item
+        console.log('Adding new item to cart:', cartItem);
         return [...currentCart, cartItem];
       }
     });
     
+    // Show single toast message
     toast({
       title: "Added to Cart",
       description: `${item.name} has been added to your cart.`,
+      duration: 2000,
     });
   };
   
@@ -107,6 +112,7 @@ export const useCart = () => {
     toast({
       title: "Item Removed",
       description: "Item has been removed from your cart.",
+      duration: 2000,
     });
   };
   
@@ -131,6 +137,7 @@ export const useCart = () => {
     toast({
       title: "Cart Cleared",
       description: "All items have been removed from your cart.",
+      duration: 2000,
     });
   };
   

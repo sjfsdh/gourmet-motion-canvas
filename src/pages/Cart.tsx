@@ -1,91 +1,39 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { ShoppingBag, Trash2, Plus, Minus, ArrowRight, ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
 import { CustomButton } from '@/components/ui/custom-button';
 import AnimatedSection from '@/components/animations/AnimatedSection';
-
-interface CartItem {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  image: string;
-  quantity: number;
-  category?: string;
-}
+import { useCart } from '@/hooks/useCart';
 
 const Cart = () => {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
-  const { toast } = useToast();
-
-  useEffect(() => {
-    // Load cart items from localStorage
-    try {
-      const savedCart = localStorage.getItem('cart');
-      if (savedCart) {
-        const parsedCart = JSON.parse(savedCart);
-        setCartItems(parsedCart);
-      }
-    } catch (error) {
-      console.error("Error loading cart:", error);
-      toast({
-        title: "Error",
-        description: "There was an issue loading your cart",
-        variant: "destructive",
-      });
-    }
-    
-    setIsLoading(false);
-  }, [toast]);
-
-  const updateCart = (newCart: CartItem[]) => {
-    setCartItems(newCart);
-    localStorage.setItem('cart', JSON.stringify(newCart));
-  };
+  const { 
+    cart: cartItems, 
+    updateQuantity, 
+    removeFromCart, 
+    clearCart, 
+    cartTotal, 
+    isLoading 
+  } = useCart();
 
   const updateItemQuantity = (id: number, action: 'increase' | 'decrease') => {
-    const updatedCart = cartItems.map(item => {
-      if (item.id === id) {
-        if (action === 'increase') {
-          return { ...item, quantity: item.quantity + 1 };
-        } else if (action === 'decrease' && item.quantity > 1) {
-          return { ...item, quantity: item.quantity - 1 };
-        }
-      }
-      return item;
-    });
+    const item = cartItems.find(item => item.id === id);
+    if (!item) return;
     
-    updateCart(updatedCart);
+    if (action === 'increase') {
+      updateQuantity(id, item.quantity + 1);
+    } else if (action === 'decrease' && item.quantity > 1) {
+      updateQuantity(id, item.quantity - 1);
+    }
   };
 
   const removeItem = (id: number) => {
-    const updatedCart = cartItems.filter(item => item.id !== id);
-    updateCart(updatedCart);
-    
-    toast({
-      title: "Item Removed",
-      description: "Item has been removed from your cart",
-    });
+    removeFromCart(id);
   };
 
-  const clearCart = () => {
-    updateCart([]);
-    toast({
-      title: "Cart Cleared",
-      description: "All items have been removed from your cart",
-    });
-  };
-
-  const calculateSubtotal = () => {
-    return cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  };
-
-  const subtotal = calculateSubtotal();
+  const subtotal = cartTotal;
   const tax = subtotal * 0.08; // 8% tax
   const total = subtotal + tax;
 

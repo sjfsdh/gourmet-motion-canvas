@@ -5,7 +5,6 @@ import { ShoppingCart } from 'lucide-react';
 import { CustomButton } from '@/components/ui/custom-button';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '@/hooks/useCart';
-import { useToast } from '@/hooks/use-toast';
 
 interface MenuItemProps {
   item: {
@@ -22,14 +21,14 @@ interface MenuItemProps {
 
 const MenuItem: React.FC<MenuItemProps> = ({ item, onAddToCart }) => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { addToCart } = useCart();
 
   const handleAddToCart = () => {
+    console.log('MenuItem handleAddToCart called with:', item);
     // Use the hook's addToCart function
     addToCart(item);
     
-    // Also call the prop function if provided
+    // Also call the prop function if provided (for backward compatibility)
     if (onAddToCart) {
       onAddToCart(item);
     }

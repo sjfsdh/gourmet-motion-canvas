@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import AnimatedSection from '@/components/animations/AnimatedSection';
 import { useToast } from '@/hooks/use-toast';
-import { toast } from 'sonner';
 import MenuSearch from '@/components/menu/MenuSearch';
 import CategoryFilter from '@/components/menu/CategoryFilter';
 import MenuGrid from '@/components/menu/MenuGrid';
@@ -25,7 +24,6 @@ const Menu: React.FC = () => {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [displayItems, setDisplayItems] = useState([]);
-  const { toast: customToast } = useToast();
   
   // Fetch menu items from the database
   const { data: menuItems, isLoading, error } = useQuery({
@@ -47,36 +45,6 @@ const Menu: React.FC = () => {
       setDisplayItems(filtered);
     }
   }, [activeCategory, searchTerm, menuItems]);
-  
-  // When adding to cart, update localStorage
-  const handleAddToCart = (item) => {
-    // Get existing cart from localStorage or initialize empty array
-    const existingCart = JSON.parse(localStorage.getItem('cart') || '[]');
-    
-    // Check if item is already in cart
-    const itemIndex = existingCart.findIndex(cartItem => cartItem.id === item.id);
-    
-    if (itemIndex !== -1) {
-      // Item exists, increment quantity
-      existingCart[itemIndex].quantity += 1;
-      toast.success(`Added another ${item.name} to your cart`);
-    } else {
-      // Item does not exist, add new item with quantity 1
-      existingCart.push({
-        ...item,
-        quantity: 1
-      });
-      toast.success(`Added ${item.name} to your cart`);
-    }
-    
-    // Save updated cart to localStorage
-    localStorage.setItem('cart', JSON.stringify(existingCart));
-    
-    customToast({
-      title: "Added to Cart",
-      description: `${item.name} has been added to your cart.`,
-    });
-  };
 
   // Scroll to top when category changes
   useEffect(() => {
@@ -144,7 +112,6 @@ const Menu: React.FC = () => {
                   <MenuGrid
                     items={menuItems?.filter(item => item.featured) || []}
                     activeCategory={activeCategory}
-                    onAddToCart={handleAddToCart}
                     onClearFilters={handleClearFilters}
                     showFeatured={true}
                     isLoading={isLoading}
@@ -175,7 +142,6 @@ const Menu: React.FC = () => {
                 <MenuGrid
                   items={displayItems}
                   activeCategory={activeCategory}
-                  onAddToCart={handleAddToCart}
                   onClearFilters={handleClearFilters}
                   showFeatured={false}
                   isLoading={isLoading}
