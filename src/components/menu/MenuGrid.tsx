@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Loader2 } from 'lucide-react';
@@ -7,7 +8,6 @@ import { CustomButton } from '@/components/ui/custom-button';
 interface MenuGridProps {
   items: any[];
   activeCategory: string;
-  onAddToCart?: (item: any) => void; // Made optional since MenuItem now uses useCart hook
   onClearFilters: () => void;
   showFeatured?: boolean;
   isLoading?: boolean;
@@ -18,7 +18,6 @@ interface MenuGridProps {
 const MenuGrid: React.FC<MenuGridProps> = ({ 
   items, 
   activeCategory, 
-  onAddToCart, 
   onClearFilters,
   showFeatured = false,
   isLoading = false,
@@ -125,7 +124,7 @@ const MenuGrid: React.FC<MenuGridProps> = ({
       >
         <AnimatePresence>
           {filteredItems.map((item) => (
-            <MenuItem key={item.id} item={item} onAddToCart={onAddToCart} />
+            <MenuItem key={item.id} item={item} />
           ))}
         </AnimatePresence>
       </motion.div>
