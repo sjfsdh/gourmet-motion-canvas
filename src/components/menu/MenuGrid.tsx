@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Loader2 } from 'lucide-react';
@@ -8,7 +7,7 @@ import { CustomButton } from '@/components/ui/custom-button';
 interface MenuGridProps {
   items: any[];
   activeCategory: string;
-  onAddToCart: (item: any) => void;
+  onAddToCart?: (item: any) => void; // Made optional since MenuItem now uses useCart hook
   onClearFilters: () => void;
   showFeatured?: boolean;
   isLoading?: boolean;
