@@ -16,22 +16,15 @@ interface MenuItemProps {
     featured?: boolean;
     category?: string;
   };
-  onAddToCart?: (item: any) => void;
 }
 
-const MenuItem: React.FC<MenuItemProps> = ({ item, onAddToCart }) => {
+const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
   const navigate = useNavigate();
   const { addToCart } = useCart();
 
   const handleAddToCart = () => {
     console.log('MenuItem handleAddToCart called with:', item);
-    // Use the hook's addToCart function
     addToCart(item);
-    
-    // Also call the prop function if provided (for backward compatibility)
-    if (onAddToCart) {
-      onAddToCart(item);
-    }
   };
   
   const handleOrderNow = () => {
@@ -61,6 +54,8 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, onAddToCart }) => {
             src={item.image}
             alt={item.name}
             className="w-full h-full object-cover"
+            style={{ aspectRatio: '16/9' }}
+            loading="lazy"
           />
           <div className="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         </motion.div>

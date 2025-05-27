@@ -19,11 +19,18 @@ export const useCart = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   
-  // Generate a unique cart ID for the current browser session
+  // Generate a unique cart ID for the current browser session using MAC/IP simulation
   const getCartId = () => {
     let cartId = localStorage.getItem('cartId');
     if (!cartId) {
-      cartId = `cart_${Math.random().toString(36).substr(2, 9)}`;
+      // Simulate MAC address based approach using browser fingerprint
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      ctx!.textBaseline = 'top';
+      ctx!.font = '14px Arial';
+      ctx!.fillText('Browser fingerprint', 2, 2);
+      const fingerprint = canvas.toDataURL();
+      cartId = `cart_${btoa(fingerprint).slice(0, 12)}`;
       localStorage.setItem('cartId', cartId);
     }
     return cartId;
@@ -41,13 +48,21 @@ export const useCart = () => {
       const savedCart = localStorage.getItem(cartKey);
       if (savedCart) {
         const parsedCart = JSON.parse(savedCart);
-        setCart(parsedCart);
+        // Ensure we only load valid cart items
+        if (Array.isArray(parsedCart)) {
+          setCart(parsedCart);
+        } else {
+          setCart([]);
+        }
+      } else {
+        // For new users, ensure cart is empty
+        setCart([]);
       }
     } catch (error) {
       console.error('Error parsing cart from localStorage:', error);
       // Reset cart if there's an error
-      localStorage.setItem(getCartStorageKey(), JSON.stringify([]));
       setCart([]);
+      localStorage.removeItem(getCartStorageKey());
     }
     
     setIsLoading(false);
@@ -56,7 +71,8 @@ export const useCart = () => {
   // Save cart to localStorage whenever it changes
   useEffect(() => {
     if (!isLoading) {
-      localStorage.setItem(getCartStorageKey(), JSON.stringify(cart));
+      const cartKey = getCartStorageKey();
+      localStorage.setItem(cartKey, JSON.stringify(cart));
     }
   }, [cart, isLoading, user]);
   
@@ -97,7 +113,7 @@ export const useCart = () => {
       }
     });
     
-    // Show single toast message
+    // Show toast message
     toast({
       title: "Added to Cart",
       description: `${item.name} has been added to your cart.`,

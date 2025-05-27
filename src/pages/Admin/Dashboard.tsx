@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   ShoppingCart, 
@@ -11,22 +10,41 @@ import {
 } from 'lucide-react';
 
 const Dashboard = () => {
-  // Mock data for dashboard stats
-  const dashboardStats = [
-    { title: "Total Orders", value: "1,248", icon: ShoppingCart, change: "+12.5%", color: "bg-blue-500" },
-    { title: "Total Sales", value: "$24,780", icon: DollarSign, change: "+8.2%", color: "bg-green-500" },
-    { title: "Active Users", value: "856", icon: Users, change: "+18.3%", color: "bg-purple-500" },
-    { title: "Low Stock Items", value: "12", icon: AlertTriangle, change: "-2.4%", color: "bg-amber-500" },
-  ];
+  const [dashboardStats, setDashboardStats] = useState([
+    { title: "Total Orders", value: "0", icon: ShoppingCart, change: "+0%", color: "bg-blue-500" },
+    { title: "Total Sales", value: "$0.00", icon: DollarSign, change: "+0%", color: "bg-green-500" },
+    { title: "Active Users", value: "0", icon: Users, change: "+0%", color: "bg-purple-500" },
+    { title: "Low Stock Items", value: "0", icon: AlertTriangle, change: "+0%", color: "bg-amber-500" },
+  ]);
 
-  // Mock data for recent orders
-  const recentOrders = [
-    { id: "#ORD-5289", customer: "John Smith", date: "2023-04-26", status: "Delivered", total: "$89.95" },
-    { id: "#ORD-5288", customer: "Anna Johnson", date: "2023-04-26", status: "Preparing", total: "$124.00" },
-    { id: "#ORD-5287", customer: "Robert Williams", date: "2023-04-26", status: "Pending", total: "$54.50" },
-    { id: "#ORD-5286", customer: "Emily Davis", date: "2023-04-25", status: "Delivered", total: "$78.25" },
-    { id: "#ORD-5285", customer: "Michael Brown", date: "2023-04-25", status: "Cancelled", total: "$112.99" },
-  ];
+  const [recentOrders, setRecentOrders] = useState([]);
+
+  // Simulate real-time updates (in real app, this would come from your database)
+  useEffect(() => {
+    // Load data from localStorage or initialize empty
+    const savedStats = localStorage.getItem('dashboardStats');
+    const savedOrders = localStorage.getItem('recentOrders');
+    
+    if (savedStats) {
+      setDashboardStats(JSON.parse(savedStats));
+    }
+    
+    if (savedOrders) {
+      setRecentOrders(JSON.parse(savedOrders));
+    }
+  }, []);
+
+  // Function to update stats (this would be called when new orders come in)
+  const updateStats = () => {
+    // In real app, fetch from database
+    // For now, we'll keep it at 0 until real orders are placed
+    setDashboardStats([
+      { title: "Total Orders", value: "0", icon: ShoppingCart, change: "+0%", color: "bg-blue-500" },
+      { title: "Total Sales", value: "$0.00", icon: DollarSign, change: "+0%", color: "bg-green-500" },
+      { title: "Active Users", value: "0", icon: Users, change: "+0%", color: "bg-purple-500" },
+      { title: "Low Stock Items", value: "0", icon: AlertTriangle, change: "+0%", color: "bg-amber-500" },
+    ]);
+  };
 
   return (
     <div className="p-6">
@@ -49,7 +67,7 @@ const Dashboard = () => {
               <div>
                 <p className="text-gray-500 mb-1 text-sm">{stat.title}</p>
                 <h3 className="text-2xl font-bold">{stat.value}</h3>
-                <p className={`text-sm mt-2 ${stat.change.includes('+') ? 'text-green-500' : 'text-red-500'}`}>
+                <p className={`text-sm mt-2 ${stat.change.includes('+') && stat.change !== '+0%' ? 'text-green-500' : 'text-gray-500'}`}>
                   {stat.change} since last month
                 </p>
               </div>
@@ -68,44 +86,52 @@ const Dashboard = () => {
           <button className="text-sm text-blue-500 hover:text-blue-600 font-medium">View All</button>
         </div>
         
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {recentOrders.map((order) => (
-                <tr key={order.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{order.id}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.customer}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.date}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      order.status === 'Delivered' ? 'bg-green-100 text-green-800' : 
-                      order.status === 'Preparing' ? 'bg-blue-100 text-blue-800' :
-                      order.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {order.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.total}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <button className="text-blue-500 hover:text-blue-700 mr-3">View</button>
-                    <button className="text-gray-500 hover:text-gray-700">Edit</button>
-                  </td>
+        {recentOrders.length === 0 ? (
+          <div className="text-center py-8">
+            <ShoppingCart size={48} className="mx-auto text-gray-300 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No orders yet</h3>
+            <p className="text-gray-500">Orders will appear here when customers place them.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {recentOrders.map((order: any) => (
+                  <tr key={order.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{order.id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.customer}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.date}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        order.status === 'Delivered' ? 'bg-green-100 text-green-800' : 
+                        order.status === 'Preparing' ? 'bg-blue-100 text-blue-800' :
+                        order.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.total}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <button className="text-blue-500 hover:text-blue-700 mr-3">View</button>
+                      <button className="text-gray-500 hover:text-gray-700">Edit</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Sales chart */}
@@ -122,7 +148,7 @@ const Dashboard = () => {
         <div className="h-64 flex items-center justify-center text-gray-500">
           <div className="flex flex-col items-center">
             <TrendingUp size={48} className="text-gray-300 mb-3" />
-            <p>Sales chart will be displayed here</p>
+            <p>Sales data will appear here when orders are placed</p>
           </div>
         </div>
       </div>
