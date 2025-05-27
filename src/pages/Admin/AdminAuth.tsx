@@ -6,7 +6,6 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { CustomButton } from '@/components/ui/custom-button';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogTitle, DialogDescription, DialogContent } from '@/components/ui/dialog';
 
 const AdminAuth = () => {
@@ -34,26 +33,12 @@ const AdminAuth = () => {
     setIsLoading(true);
     
     try {
-      console.log("Attempting to sign in with:", email, "password length:", password.length);
+      console.log("Attempting admin login with:", email, "password length:", password.length);
       
-      // Sign in with Supabase first to get authentication
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (authError) {
-        console.error("Auth error:", authError);
-        setErrorMessage(authError.message || "Invalid login credentials");
-        setShowErrorDialog(true);
-        throw authError;
-      }
-      
-      console.log("Auth success:", authData);
-      
-      // This is a mock admin check. In a real app, you would check against a roles table
+      // Direct admin credential check without Supabase authentication
       if (email === 'admin@example.com' && password === 'admin123') {
-        console.log("Admin credentials verified");
+        console.log("Admin credentials verified - logging in directly");
+        
         localStorage.setItem('adminToken', 'mock-jwt-admin-token');
         localStorage.setItem('adminUser', JSON.stringify({ 
           name: 'Admin User', 
@@ -71,7 +56,7 @@ const AdminAuth = () => {
         
         navigate('/admin');
       } else {
-        console.log("Not admin credentials");
+        console.log("Invalid admin credentials provided");
         setErrorMessage("Invalid admin credentials. Please use admin@example.com and admin123");
         setShowErrorDialog(true);
         
@@ -81,6 +66,8 @@ const AdminAuth = () => {
       }
     } catch (error: any) {
       console.error("Admin login error:", error);
+      setErrorMessage("An unexpected error occurred during login");
+      setShowErrorDialog(true);
       
       // Clear any existing admin token if login fails
       localStorage.removeItem('adminToken');
