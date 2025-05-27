@@ -1,256 +1,286 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  User, 
-  ShoppingBag, 
-  MapPin, 
-  Heart, 
-  CreditCard, 
-  Shield, 
-  Settings 
-} from 'lucide-react';
-import AnimatedSection from '@/components/animations/AnimatedSection';
+import { User, MapPin, Phone, Mail, Package, Eye, Calendar, CreditCard } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { getUserOrders, Order } from '@/services/orderService';
+import ViewDetailsModal from '@/components/modals/ViewDetailsModal';
 import { CustomButton } from '@/components/ui/custom-button';
+import AnimatedSection from '@/components/animations/AnimatedSection';
 
 const Account = () => {
+  const { user } = useAuth();
+  const [userOrders, setUserOrders] = useState<Order[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
-  const [userOrders, setUserOrders] = useState([]); // Empty for new users
 
-  const tabs = [
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'orders', label: 'Orders', icon: ShoppingBag },
-    { id: 'addresses', label: 'Addresses', icon: MapPin },
-    { id: 'favorites', label: 'Favorites', icon: Heart },
-    { id: 'payment', label: 'Payment Methods', icon: CreditCard },
-    { id: 'security', label: 'Security', icon: Shield },
-    { id: 'settings', label: 'Settings', icon: Settings },
-  ];
+  useEffect(() => {
+    if (user?.id) {
+      const orders = getUserOrders(user.id);
+      setUserOrders(orders);
+    }
+  }, [user]);
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'profile':
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Profile Information</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                <input type="text" className="w-full p-3 border border-gray-300 rounded-md" placeholder="Enter your first name" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                <input type="text" className="w-full p-3 border border-gray-300 rounded-md" placeholder="Enter your last name" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input type="email" className="w-full p-3 border border-gray-300 rounded-md" placeholder="Enter your email" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                <input type="tel" className="w-full p-3 border border-gray-300 rounded-md" placeholder="Enter your phone number" />
-              </div>
-            </div>
-            <CustomButton>Save Changes</CustomButton>
-          </div>
-        );
-      
-      case 'orders':
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Order History</h2>
-            {userOrders.length === 0 ? (
-              <div className="text-center py-12">
-                <ShoppingBag size={64} className="mx-auto text-gray-300 mb-4" />
-                <h3 className="text-xl font-medium text-gray-900 mb-2">No orders yet</h3>
-                <p className="text-gray-500 mb-6">When you place your first order, it will appear here.</p>
-                <CustomButton onClick={() => window.location.href = '/menu'}>
-                  Browse Menu
-                </CustomButton>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {userOrders.map((order: any) => (
-                  <div key={order.id} className="bg-white border border-gray-200 rounded-lg p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="font-semibold">Order #{order.id}</h3>
-                        <p className="text-gray-500">{order.date}</p>
-                      </div>
-                      <span className="px-3 py-1 rounded-full text-sm bg-green-100 text-green-800">
-                        {order.status}
-                      </span>
-                    </div>
-                    <div className="space-y-2">
-                      {order.items.map((item: any) => (
-                        <div key={item.id} className="flex justify-between">
-                          <span>{item.name} × {item.quantity}</span>
-                          <span>${(item.price * item.quantity).toFixed(2)}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="border-t pt-2 mt-2 flex justify-between items-center">
-                      <strong>Total: ${order.total}</strong>
-                      <CustomButton variant="outline" size="sm">
-                        View Details
-                      </CustomButton>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      
-      case 'addresses':
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Delivery Addresses</h2>
-            <div className="text-center py-12">
-              <MapPin size={64} className="mx-auto text-gray-300 mb-4" />
-              <h3 className="text-xl font-medium text-gray-900 mb-2">No addresses saved</h3>
-              <p className="text-gray-500 mb-6">Add your delivery addresses for faster checkout.</p>
-              <CustomButton>Add New Address</CustomButton>
-            </div>
-          </div>
-        );
-      
-      case 'favorites':
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Favorite Items</h2>
-            <div className="text-center py-12">
-              <Heart size={64} className="mx-auto text-gray-300 mb-4" />
-              <h3 className="text-xl font-medium text-gray-900 mb-2">No favorites yet</h3>
-              <p className="text-gray-500 mb-6">Save your favorite dishes for quick reordering.</p>
-              <CustomButton onClick={() => window.location.href = '/menu'}>
-                Browse Menu
-              </CustomButton>
-            </div>
-          </div>
-        );
-      
-      case 'payment':
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Payment Methods</h2>
-            <div className="text-center py-12">
-              <CreditCard size={64} className="mx-auto text-gray-300 mb-4" />
-              <h3 className="text-xl font-medium text-gray-900 mb-2">No payment methods saved</h3>
-              <p className="text-gray-500 mb-6">Add your payment methods for faster checkout.</p>
-              <CustomButton>Add Payment Method</CustomButton>
-            </div>
-          </div>
-        );
-      
-      case 'security':
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Security Settings</h2>
-            <div className="space-y-4">
-              <div className="p-4 border border-gray-200 rounded-lg">
-                <h3 className="font-medium mb-2">Change Password</h3>
-                <p className="text-gray-600 text-sm mb-4">Update your password to keep your account secure.</p>
-                <CustomButton variant="outline">Change Password</CustomButton>
-              </div>
-              <div className="p-4 border border-gray-200 rounded-lg">
-                <h3 className="font-medium mb-2">Two-Factor Authentication</h3>
-                <p className="text-gray-600 text-sm mb-4">Add an extra layer of security to your account.</p>
-                <CustomButton variant="outline">Enable 2FA</CustomButton>
-              </div>
-            </div>
-          </div>
-        );
-      
-      case 'settings':
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Account Settings</h2>
-            <div className="space-y-4">
-              <div className="p-4 border border-gray-200 rounded-lg">
-                <h3 className="font-medium mb-2">Email Notifications</h3>
-                <div className="space-y-2">
-                  <label className="flex items-center">
-                    <input type="checkbox" className="mr-2" defaultChecked />
-                    Order updates and confirmations
-                  </label>
-                  <label className="flex items-center">
-                    <input type="checkbox" className="mr-2" defaultChecked />
-                    Special offers and promotions
-                  </label>
-                  <label className="flex items-center">
-                    <input type="checkbox" className="mr-2" />
-                    Newsletter and updates
-                  </label>
-                </div>
-              </div>
-              <div className="p-4 border border-gray-200 rounded-lg">
-                <h3 className="font-medium mb-2">Privacy Settings</h3>
-                <div className="space-y-2">
-                  <label className="flex items-center">
-                    <input type="checkbox" className="mr-2" defaultChecked />
-                    Allow order history analytics
-                  </label>
-                  <label className="flex items-center">
-                    <input type="checkbox" className="mr-2" />
-                    Share data for personalized recommendations
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      
+  const handleViewOrder = (order: Order) => {
+    setSelectedOrder(order);
+    setIsModalOpen(true);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'delivered':
+        return 'bg-green-100 text-green-800';
+      case 'preparing':
+        return 'bg-blue-100 text-blue-800';
+      case 'ready':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'pending':
+        return 'bg-gray-100 text-gray-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
       default:
-        return null;
+        return 'bg-gray-100 text-gray-800';
     }
   };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  };
+
+  const totalSpent = userOrders.reduce((sum, order) => sum + order.total, 0);
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Please log in</h2>
+          <p className="text-gray-600">You need to be logged in to view your account.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen py-12">
       <div className="container-custom">
         <AnimatedSection animation="fadeIn">
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="flex flex-col md:flex-row">
-              {/* Sidebar */}
-              <div className="w-full md:w-64 bg-gray-50 p-6">
-                <div className="mb-6">
-                  <h1 className="text-xl font-bold">My Account</h1>
-                  <p className="text-gray-600 text-sm">user@example.com</p>
+            {/* Header */}
+            <div className="bg-gradient-to-r from-restaurant-green to-blue-600 px-6 py-8 text-white">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                  <User size={32} />
                 </div>
-                <nav className="space-y-2">
-                  {tabs.map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`w-full flex items-center px-3 py-2 rounded-md text-left transition-colors ${
-                        activeTab === tab.id
-                          ? 'bg-restaurant-green text-white'
-                          : 'text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      <tab.icon size={18} className="mr-3" />
-                      {tab.label}
-                    </button>
-                  ))}
-                </nav>
+                <div>
+                  <h1 className="text-2xl font-bold">{user.name || user.email}</h1>
+                  <p className="opacity-90">{user.email}</p>
+                </div>
               </div>
-              
-              {/* Content */}
-              <div className="flex-1 p-6">
-                <motion.div
-                  key={activeTab}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.3 }}
+            </div>
+
+            {/* Navigation */}
+            <div className="border-b border-gray-200">
+              <nav className="flex space-x-8 px-6">
+                <button
+                  onClick={() => setActiveTab('profile')}
+                  className={`py-4 border-b-2 transition-colors ${
+                    activeTab === 'profile'
+                      ? 'border-restaurant-green text-restaurant-green'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
                 >
-                  {renderContent()}
+                  Profile
+                </button>
+                <button
+                  onClick={() => setActiveTab('orders')}
+                  className={`py-4 border-b-2 transition-colors ${
+                    activeTab === 'orders'
+                      ? 'border-restaurant-green text-restaurant-green'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  My Orders ({userOrders.length})
+                </button>
+              </nav>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              {activeTab === 'profile' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-6"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-6">
+                      <h2 className="text-xl font-semibold">Personal Information</h2>
+                      
+                      <div className="space-y-4">
+                        <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+                          <User size={20} className="text-gray-500" />
+                          <div>
+                            <p className="font-medium">Full Name</p>
+                            <p className="text-gray-600">{user.name || 'Not provided'}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+                          <Mail size={20} className="text-gray-500" />
+                          <div>
+                            <p className="font-medium">Email Address</p>
+                            <p className="text-gray-600">{user.email}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+                          <Phone size={20} className="text-gray-500" />
+                          <div>
+                            <p className="font-medium">Phone Number</p>
+                            <p className="text-gray-600">Not provided</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+                          <MapPin size={20} className="text-gray-500" />
+                          <div>
+                            <p className="font-medium">Address</p>
+                            <p className="text-gray-600">Not provided</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      <h2 className="text-xl font-semibold">Account Statistics</h2>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-lg">
+                          <Package size={24} className="mb-2" />
+                          <p className="text-2xl font-bold">{userOrders.length}</p>
+                          <p className="text-blue-100">Total Orders</p>
+                        </div>
+                        
+                        <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg">
+                          <CreditCard size={24} className="mb-2" />
+                          <p className="text-2xl font-bold">{formatCurrency(totalSpent)}</p>
+                          <p className="text-green-100">Total Spent</p>
+                        </div>
+                      </div>
+
+                      <div className="bg-gray-50 p-6 rounded-lg">
+                        <h3 className="font-semibold mb-3">Membership Since</h3>
+                        <div className="flex items-center space-x-2 text-gray-600">
+                          <Calendar size={16} />
+                          <span>January 2025</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </motion.div>
-              </div>
+              )}
+
+              {activeTab === 'orders' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-6"
+                >
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-xl font-semibold">Order History</h2>
+                    {userOrders.length > 0 && (
+                      <p className="text-gray-600">
+                        Total: {formatCurrency(totalSpent)} from {userOrders.length} orders
+                      </p>
+                    )}
+                  </div>
+
+                  {userOrders.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Package size={64} className="mx-auto text-gray-300 mb-4" />
+                      <h3 className="text-xl font-semibold text-gray-700 mb-2">No orders yet</h3>
+                      <p className="text-gray-500 mb-6">
+                        You haven't placed any orders yet. Start by browsing our delicious menu!
+                      </p>
+                      <CustomButton
+                        onClick={() => window.location.href = '/menu'}
+                      >
+                        Browse Menu
+                      </CustomButton>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {userOrders.map((order) => (
+                        <motion.div
+                          key={order.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex justify-between items-start mb-4">
+                            <div>
+                              <h3 className="text-lg font-semibold">Order #{order.id.slice(-8)}</h3>
+                              <p className="text-gray-600">
+                                {new Date(order.created_at).toLocaleDateString()} at{' '}
+                                {new Date(order.created_at).toLocaleTimeString()}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xl font-bold text-restaurant-green">
+                                {formatCurrency(order.total)}
+                              </p>
+                              <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(order.status)}`}>
+                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            {order.items.slice(0, 3).map((item, index) => (
+                              <div key={index} className="flex items-center space-x-2 bg-gray-50 px-3 py-1 rounded-full">
+                                <span className="text-sm">{item.name}</span>
+                                <span className="text-xs text-gray-500">×{item.quantity}</span>
+                              </div>
+                            ))}
+                            {order.items.length > 3 && (
+                              <div className="bg-gray-100 px-3 py-1 rounded-full text-sm text-gray-600">
+                                +{order.items.length - 3} more
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex justify-end">
+                            <CustomButton
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewOrder(order)}
+                              icon={<Eye size={16} />}
+                            >
+                              View Details
+                            </CustomButton>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              )}
             </div>
           </div>
         </AnimatedSection>
       </div>
+
+      {/* View Details Modal */}
+      <ViewDetailsModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        order={selectedOrder}
+        type="order"
+      />
     </div>
   );
 };

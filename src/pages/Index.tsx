@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Star, ChevronLeft, ChevronRight, MapPin, Clock, Phone, X } from 'lucide-react';
+import { ArrowRight, Star, ChevronLeft, ChevronRight, MapPin, Clock, Phone } from 'lucide-react';
 import AnimatedSection from '@/components/animations/AnimatedSection';
 import StaggeredItems from '@/components/animations/StaggeredItems';
 import HeroBanner from '@/components/HeroBanner';
@@ -78,15 +79,8 @@ const Index = () => {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [email, setEmail] = useState('');
-  const [showPopupOffer, setShowPopupOffer] = useState(false);
 
-  // Show popup after 3 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowPopupOffer(true);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, []);
+  // Remove welcome popup completely
 
   const nextTestimonial = () => {
     setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
@@ -105,12 +99,6 @@ const Index = () => {
         setIsSubscribed(false);
       }, 5000);
     }
-  };
-
-  // Dummy function for MenuGrid component
-  const handleAddToCart = (item: any) => {
-    // This is just a placeholder, actual cart logic is handled in MenuItem component
-    console.log('Added to cart:', item);
   };
 
   const clearFilters = () => {
@@ -395,38 +383,6 @@ const Index = () => {
           </AnimatedSection>
         </div>
       </section>
-
-      {/* Special Offer Popup */}
-      <AnimatePresence>
-        {showPopupOffer && (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-6 right-6 z-50 max-w-sm w-full"
-          >
-            <div className="bg-white rounded-xl shadow-xl p-6 border border-blue-100">
-              <button 
-                onClick={() => setShowPopupOffer(false)}
-                className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
-                aria-label="Close"
-              >
-                <X size={20} />
-              </button>
-              <h3 className="text-xl font-bold text-blue-600 mb-3">First-Time Visitor?</h3>
-              <p className="mb-4 text-gray-600">Enjoy 15% off your first order with code:</p>
-              <div className="bg-blue-50 p-3 rounded-lg text-center font-bold text-blue-800 mb-4">
-                WELCOME15
-              </div>
-              <CustomButton className="w-full">
-                <Link to="/menu" className="block w-full text-center">
-                  Order Now
-                </Link>
-              </CustomButton>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };
