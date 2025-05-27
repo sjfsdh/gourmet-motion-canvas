@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { User, MapPin, Phone, Mail, Package, Eye, Calendar, CreditCard } from 'lucide-react';
@@ -53,6 +52,17 @@ const Account = () => {
 
   const totalSpent = userOrders.reduce((sum, order) => sum + order.total, 0);
 
+  // Get user display name from user_metadata or fallback to email
+  const getUserDisplayName = () => {
+    if (user?.user_metadata?.full_name) {
+      return user.user_metadata.full_name;
+    }
+    if (user?.user_metadata?.name) {
+      return user.user_metadata.name;
+    }
+    return user?.email || 'User';
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -76,7 +86,7 @@ const Account = () => {
                   <User size={32} />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold">{user.name || user.email}</h1>
+                  <h1 className="text-2xl font-bold">{getUserDisplayName()}</h1>
                   <p className="opacity-90">{user.email}</p>
                 </div>
               </div>
@@ -125,7 +135,7 @@ const Account = () => {
                           <User size={20} className="text-gray-500" />
                           <div>
                             <p className="font-medium">Full Name</p>
-                            <p className="text-gray-600">{user.name || 'Not provided'}</p>
+                            <p className="text-gray-600">{getUserDisplayName()}</p>
                           </div>
                         </div>
                         
