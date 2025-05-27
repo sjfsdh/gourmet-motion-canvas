@@ -147,7 +147,6 @@ const Index = () => {
             <MenuGrid 
               items={featuredDishes} 
               activeCategory="all" 
-              onAddToCart={handleAddToCart} 
               onClearFilters={clearFilters}
               showFeatured={true}
               columns={4}
