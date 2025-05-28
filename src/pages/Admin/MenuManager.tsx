@@ -3,57 +3,21 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Edit, Trash2, Plus, Image, AlertCircle, Check, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-// Mock menu data from your existing menu
-const initialMenuItems = [
-  {
-    id: 1,
-    name: 'Burrata Salad',
-    description: 'Fresh burrata cheese with heirloom tomatoes, basil, and aged balsamic.',
-    price: 14.99,
-    category: 'starters',
-    image: 'https://images.unsplash.com/photo-1505253758473-96b7015fcd40?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    featured: true,
-    inStock: true
-  },
-  {
-    id: 2,
-    name: 'Truffle Arancini',
-    description: 'Crispy risotto balls with wild mushrooms, truffle, and parmesan.',
-    price: 12.99,
-    category: 'starters',
-    image: 'https://images.unsplash.com/photo-1604135307399-86c3e6035d13?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    featured: false,
-    inStock: true
-  },
-  {
-    id: 4,
-    name: 'Filet Mignon',
-    description: '8oz prime beef tenderloin with red wine reduction and roasted vegetables.',
-    price: 42.99,
-    category: 'mains',
-    image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    featured: true,
-    inStock: true
-  },
-  {
-    id: 10,
-    name: 'Chocolate Fondant',
-    description: 'Warm chocolate cake with a molten center and vanilla ice cream.',
-    price: 12.99,
-    category: 'desserts',
-    image: 'https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    featured: true,
-    inStock: false
-  }
-];
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getAllMenuItems, createMenuItem, updateMenuItem, deleteMenuItem, toggleFeaturedStatus, toggleInStockStatus } from '@/services/menuService';
 
 const MenuManager = () => {
-  const [menuItems, setMenuItems] = useState(initialMenuItems);
   const [editItem, setEditItem] = useState<any>(null);
   const [isAdding, setIsAdding] = useState(false);
   const { toast } = useToast();
-  
+  const queryClient = useQueryClient();
+
+  // Fetch menu items using React Query
+  const { data: menuItems = [], isLoading, error } = useQuery({
+    queryKey: ['menuItems'],
+    queryFn: getAllMenuItems
+  });
+
   // Categories for the dropdown
   const categories = [
     { id: 'starters', name: 'Starters' },
@@ -63,17 +27,91 @@ const MenuManager = () => {
     { id: 'drinks', name: 'Drinks' }
   ];
 
+  // Mutations for CRUD operations
+  const createMutation = useMutation({
+    mutationFn: createMenuItem,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['menuItems'] });
+      toast({
+        title: "Item Added",
+        description: "New menu item has been successfully added",
+      });
+      setEditItem(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to add menu item",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => updateMenuItem(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['menuItems'] });
+      toast({
+        title: "Item Updated",
+        description: "Menu item has been successfully updated",
+      });
+      setEditItem(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update menu item",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteMenuItem,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['menuItems'] });
+      toast({
+        title: "Item Deleted",
+        description: "Menu item has been successfully removed",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete menu item",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const toggleStockMutation = useMutation({
+    mutationFn: ({ id, in_stock }: { id: number; in_stock: boolean }) => toggleInStockStatus(id, in_stock),
+    onSuccess: (updatedItem) => {
+      queryClient.invalidateQueries({ queryKey: ['menuItems'] });
+      toast({
+        title: updatedItem?.in_stock ? "Item In Stock" : "Item Out of Stock",
+        description: `${updatedItem?.name} is now ${updatedItem?.in_stock ? 'available' : 'unavailable'} for ordering`,
+      });
+    }
+  });
+
+  const toggleFeaturedMutation = useMutation({
+    mutationFn: ({ id, featured }: { id: number; featured: boolean }) => toggleFeaturedStatus(id, featured),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['menuItems'] });
+    }
+  });
+
   const handleAddItem = () => {
     setIsAdding(true);
     setEditItem({
-      id: Date.now(),
       name: '',
       description: '',
       price: 0,
       category: 'starters',
       image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085',
       featured: false,
-      inStock: true
+      in_stock: true
     });
   };
 
@@ -83,52 +121,70 @@ const MenuManager = () => {
   };
 
   const handleDeleteItem = (id: number) => {
-    setMenuItems(menuItems.filter(item => item.id !== id));
-    toast({
-      title: "Item Deleted",
-      description: "Menu item has been successfully removed",
-    });
+    deleteMutation.mutate(id);
   };
 
   const handleSaveItem = () => {
     if (isAdding) {
-      setMenuItems([...menuItems, editItem]);
-      toast({
-        title: "Item Added",
-        description: "New menu item has been successfully added",
+      createMutation.mutate({
+        name: editItem.name,
+        description: editItem.description,
+        price: editItem.price,
+        category: editItem.category,
+        image: editItem.image,
+        featured: editItem.featured,
+        in_stock: editItem.in_stock
       });
     } else {
-      setMenuItems(menuItems.map(item => item.id === editItem.id ? editItem : item));
-      toast({
-        title: "Item Updated",
-        description: "Menu item has been successfully updated",
+      updateMutation.mutate({
+        id: editItem.id,
+        data: {
+          name: editItem.name,
+          description: editItem.description,
+          price: editItem.price,
+          category: editItem.category,
+          image: editItem.image,
+          featured: editItem.featured,
+          in_stock: editItem.in_stock
+        }
       });
     }
-    setEditItem(null);
   };
 
-  const handleToggleStock = (id: number) => {
-    setMenuItems(menuItems.map(item => {
-      if (item.id === id) {
-        const newStockStatus = !item.inStock;
-        toast({
-          title: newStockStatus ? "Item In Stock" : "Item Out of Stock",
-          description: `${item.name} is now ${newStockStatus ? 'available' : 'unavailable'} for ordering`,
-        });
-        return { ...item, inStock: newStockStatus };
-      }
-      return item;
-    }));
+  const handleToggleStock = (item: any) => {
+    toggleStockMutation.mutate({
+      id: item.id,
+      in_stock: !item.in_stock
+    });
   };
 
-  const handleToggleFeatured = (id: number) => {
-    setMenuItems(menuItems.map(item => {
-      if (item.id === id) {
-        return { ...item, featured: !item.featured };
-      }
-      return item;
-    }));
+  const handleToggleFeatured = (item: any) => {
+    toggleFeaturedMutation.mutate({
+      id: item.id,
+      featured: !item.featured
+    });
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-restaurant-green"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="text-center py-8">
+          <h3 className="text-lg font-medium text-red-900 mb-2">Error Loading Menu Items</h3>
+          <p className="text-red-500">Failed to load menu items. Please try again.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -246,8 +302,8 @@ const MenuManager = () => {
                       <input
                         type="checkbox"
                         id="inStock"
-                        checked={editItem.inStock}
-                        onChange={(e) => setEditItem({ ...editItem, inStock: e.target.checked })}
+                        checked={editItem.in_stock}
+                        onChange={(e) => setEditItem({ ...editItem, in_stock: e.target.checked })}
                         className="h-4 w-4 text-restaurant-green focus:ring-restaurant-green border-gray-300 rounded"
                       />
                       <label htmlFor="inStock" className="ml-2 block text-sm text-gray-700">
@@ -305,9 +361,10 @@ const MenuManager = () => {
                 </button>
                 <button
                   onClick={handleSaveItem}
-                  className="px-4 py-2 bg-restaurant-green text-white rounded-md hover:bg-restaurant-green/90"
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                  className="px-4 py-2 bg-restaurant-green text-white rounded-md hover:bg-restaurant-green/90 disabled:opacity-50"
                 >
-                  {isAdding ? 'Add Item' : 'Save Changes'}
+                  {createMutation.isPending || updateMutation.isPending ? 'Saving...' : (isAdding ? 'Add Item' : 'Save Changes')}
                 </button>
               </div>
             </div>
@@ -364,19 +421,19 @@ const MenuManager = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <button
-                    onClick={() => handleToggleStock(item.id)}
+                    onClick={() => handleToggleStock(item)}
                     className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      item.inStock 
+                      item.in_stock 
                         ? 'bg-green-100 text-green-800 hover:bg-green-200' 
                         : 'bg-red-100 text-red-800 hover:bg-red-200'
                     }`}
                   >
-                    {item.inStock ? 'In Stock' : 'Out of Stock'}
+                    {item.in_stock ? 'In Stock' : 'Out of Stock'}
                   </button>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <button
-                    onClick={() => handleToggleFeatured(item.id)}
+                    onClick={() => handleToggleFeatured(item)}
                     className={`w-5 h-5 flex items-center justify-center rounded-full ${
                       item.featured 
                         ? 'bg-restaurant-green text-white' 

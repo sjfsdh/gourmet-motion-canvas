@@ -11,11 +11,23 @@ import {
   Eye,
   Edit
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { getAllMenuItems, getMenuItemCount } from '@/services/menuService';
 import { getOrderStats, getAllOrders, Order } from '@/services/orderService';
 import ViewDetailsModal from '@/components/modals/ViewDetailsModal';
 import { CustomButton } from '@/components/ui/custom-button';
 
 const Dashboard = () => {
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Fetch menu items count
+  const { data: menuItemsCount = 0 } = useQuery({
+    queryKey: ['menuItemsCount'],
+    queryFn: getMenuItemCount
+  });
+
+  // Get order statistics (from localStorage for now)
   const [dashboardStats, setDashboardStats] = useState({
     totalOrders: 0,
     totalRevenue: 0,
@@ -28,8 +40,6 @@ const Dashboard = () => {
   });
 
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const loadDashboardData = () => {
@@ -92,32 +102,32 @@ const Dashboard = () => {
 
   const statsCards = [
     { 
+      title: "Menu Items", 
+      value: menuItemsCount.toString(), 
+      icon: Package, 
+      change: `Total items in menu`, 
+      color: "bg-blue-500" 
+    },
+    { 
       title: "Total Orders", 
       value: dashboardStats.totalOrders.toString(), 
       icon: ShoppingCart, 
       change: dashboardStats.todayOrders > 0 ? `+${dashboardStats.todayOrders} today` : "No orders today", 
-      color: "bg-blue-500" 
+      color: "bg-green-500" 
     },
     { 
       title: "Total Revenue", 
       value: formatCurrency(dashboardStats.totalRevenue), 
       icon: DollarSign, 
       change: dashboardStats.todayRevenue > 0 ? `+${formatCurrency(dashboardStats.todayRevenue)} today` : "No revenue today", 
-      color: "bg-green-500" 
+      color: "bg-purple-500" 
     },
     { 
       title: "Pending Orders", 
       value: dashboardStats.pendingOrders.toString(), 
-      icon: Package, 
+      icon: AlertTriangle, 
       change: dashboardStats.preparingOrders > 0 ? `${dashboardStats.preparingOrders} preparing` : "No orders preparing", 
       color: "bg-orange-500" 
-    },
-    { 
-      title: "Completed Today", 
-      value: dashboardStats.deliveredOrders.toString(), 
-      icon: TrendingUp, 
-      change: dashboardStats.readyOrders > 0 ? `${dashboardStats.readyOrders} ready for pickup` : "No orders ready", 
-      color: "bg-purple-500" 
     },
   ];
 
@@ -240,6 +250,9 @@ const Dashboard = () => {
                 </p>
                 <p className="text-sm text-gray-500">
                   From {dashboardStats.totalOrders} orders
+                </p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Menu Items: {menuItemsCount}
                 </p>
               </div>
             ) : (

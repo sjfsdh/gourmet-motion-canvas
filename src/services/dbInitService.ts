@@ -1,155 +1,125 @@
 
-import { query, CountResult } from '../config/database';
-import { supabase } from '../integrations/supabase/client';
+import { getAllMenuItems, createMenuItem } from './menuService';
+import { getRestaurantSettings, updateRestaurantSettings } from './settingsService';
 
-// Initial menu items for database seeding
-const initialMenuItems = [
+// Sample menu items to seed the database
+const sampleMenuItems = [
   {
-    name: 'Traditional Gyro',
-    description: 'Tender slices of beef and lamb wrapped in warm pita bread with tomatoes, onions, and tzatziki sauce.',
+    name: 'Classic Gyro',
+    description: 'Traditional Greek gyro with lamb, tomatoes, onions, and tzatziki sauce in warm pita bread.',
     price: 12.99,
-    image: 'https://images.unsplash.com/photo-1529589789467-4a12ccb8e5ff',
+    image: 'https://images.unsplash.com/photo-1621996346565-e3dbc6d2c5f7?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
     category: 'mains',
-    featured: true
+    featured: true,
+    in_stock: true
+  },
+  {
+    name: 'Chicken Souvlaki',
+    description: 'Grilled chicken skewers with Mediterranean herbs, served with rice and Greek salad.',
+    price: 14.99,
+    image: 'https://images.unsplash.com/photo-1574894709920-11b28e7367e3?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+    category: 'mains',
+    featured: true,
+    in_stock: true
+  },
+  {
+    name: 'Hummus & Pita',
+    description: 'Creamy homemade hummus served with warm pita bread and olive oil drizzle.',
+    price: 8.99,
+    image: 'https://images.unsplash.com/photo-1571197119282-7c4d9e2fb837?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+    category: 'starters',
+    featured: false,
+    in_stock: true
   },
   {
     name: 'Greek Salad',
-    description: 'Crisp lettuce, tomatoes, cucumbers, red onions, Kalamata olives, and feta cheese, tossed in our house Greek dressing.',
-    price: 9.99,
-    image: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe',
+    description: 'Fresh tomatoes, cucumbers, olives, feta cheese with oregano and olive oil.',
+    price: 10.99,
+    image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
     category: 'starters',
-    featured: true
+    featured: true,
+    in_stock: true
   },
   {
-    name: 'Spanakopita',
-    description: 'Flaky phyllo pastry filled with spinach, feta cheese, and herbs.',
-    price: 7.99,
-    image: 'https://images.unsplash.com/photo-1537627856186-9398d2adade3',
-    category: 'starters',
-    featured: false
-  },
-  {
-    name: 'Lamb Souvlaki Plate',
-    description: 'Marinated lamb skewers served with rice pilaf, Greek salad, and pita bread.',
+    name: 'Moussaka',
+    description: 'Traditional layered dish with eggplant, ground meat, and béchamel sauce.',
     price: 16.99,
-    image: 'https://images.unsplash.com/photo-1529193591184-b1d58069ecdd',
+    image: 'https://images.unsplash.com/photo-1551782450-17144efb9c50?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
     category: 'mains',
-    featured: true
+    featured: false,
+    in_stock: true
   },
   {
     name: 'Baklava',
-    description: 'Layers of phyllo dough filled with chopped nuts and sweetened with honey syrup.',
+    description: 'Sweet pastry with layers of phyllo, nuts, and honey syrup.',
     price: 6.99,
-    image: 'https://images.unsplash.com/photo-1519676867240-f03562e64548',
+    image: 'https://images.unsplash.com/photo-1571115764595-644a1f56a55c?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
     category: 'desserts',
-    featured: false
+    featured: true,
+    in_stock: true
   },
   {
-    name: 'Greek Fries',
-    description: 'Hand-cut fries tossed with Greek herbs, feta cheese, and olive oil.',
-    price: 5.99,
-    image: 'https://images.unsplash.com/photo-1576107232684-1279f390859f',
-    category: 'sides',
-    featured: false
+    name: 'Greek Coffee',
+    description: 'Traditional strong coffee served with a glass of water.',
+    price: 3.99,
+    image: 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+    category: 'drinks',
+    featured: false,
+    in_stock: true
+  },
+  {
+    name: 'Spanakopita',
+    description: 'Spinach and feta cheese wrapped in crispy phyllo pastry.',
+    price: 9.99,
+    image: 'https://images.unsplash.com/photo-1551782450-17144efb9c50?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+    category: 'starters',
+    featured: false,
+    in_stock: true
   }
 ];
 
-// Function to initialize database
-export const initializeDatabase = async () => {
+export const initializeDatabase = async (): Promise<void> => {
   try {
-    console.log('Initializing database...');
+    console.log('Database initialization started...');
     
-    // Test connection to database
-    const { data, error } = await supabase.from('settings').select('restaurant_name').limit(1);
+    // Check if database is accessible
+    const menuItems = await getAllMenuItems();
+    console.log('Database connection successful');
     
-    if (error) {
-      console.error('Database connection error:', error);
-      throw error;
-    }
-    
-    console.log('Database initialized successfully');
-    return true;
+    return Promise.resolve();
   } catch (error) {
     console.error('Database initialization failed:', error);
-    return false;
+    throw error;
   }
 };
 
-// Function to seed database if empty
-export const seedDatabaseIfEmpty = async () => {
+export const seedDatabaseIfEmpty = async (): Promise<void> => {
   try {
-    console.log('Checking if database needs seeding...');
+    console.log('Checking if database seeding is needed...');
     
-    // Check if menu_items table is empty
-    const result = await query('SELECT COUNT(*) FROM menu_items');
+    // Check if menu items exist
+    const existingMenuItems = await getAllMenuItems();
     
-    // Ensure we have a CountResult
-    if (!result || result.length === 0) {
-      throw new Error("Could not count menu items");
-    }
-    
-    const countResult = result[0];
-    if ('count' in countResult) {
-      const count = parseInt(countResult.count, 10);
+    if (existingMenuItems.length === 0) {
+      console.log('Database is empty, seeding with sample data...');
       
-      if (count === 0) {
-        console.log('Menu items table empty, seeding data...');
-        
-        // Seed menu_items
-        for (const item of initialMenuItems) {
-          await query('INSERT INTO menu_items', [item]);
-        }
-        
-        console.log('Database seeded successfully');
-      } else {
-        console.log(`Database already contains ${count} menu items, skipping seed`);
+      // Seed menu items
+      for (const item of sampleMenuItems) {
+        await createMenuItem(item);
+        console.log(`Created menu item: ${item.name}`);
       }
+      
+      console.log('Database seeding completed successfully');
     } else {
-      console.error('Unexpected result format from count query');
+      console.log(`Database already has ${existingMenuItems.length} menu items, skipping seeding`);
     }
     
-    return true;
+    // Check and update restaurant settings if needed
+    const settings = await getRestaurantSettings();
+    console.log('Restaurant settings loaded:', settings.restaurant_name);
+    
   } catch (error) {
     console.error('Database seeding failed:', error);
-    return false;
-  }
-};
-
-// Function to check if settings need seeding
-export const checkAndSeedSettings = async () => {
-  try {
-    // Check if settings table is empty
-    const result = await query('SELECT COUNT(*) FROM settings');
-    
-    // Ensure we have a CountResult
-    if (!result || result.length === 0) {
-      throw new Error("Could not count settings");
-    }
-    
-    const countResult = result[0];
-    if ('count' in countResult) {
-      const count = parseInt(countResult.count, 10);
-      
-      if (count === 0) {
-        console.log('Settings table empty, seeding default settings...');
-        
-        // Seed settings with defaults
-        const defaultSettings = {
-          restaurant_name: 'DistinctGyrro',
-          restaurant_address: '123 Mediterranean Street, Foodie District, New York, NY 10001',
-          restaurant_phone: '+1 (212) 555-1234',
-          restaurant_email: 'info@distinctgyrro.com',
-          opening_hours: 'Monday - Friday: 8:00 AM - 10:00 PM\nSaturday: 9:00 AM - 11:00 PM\nSunday: 10:00 AM - 9:00 PM'
-        };
-        
-        await query('INSERT INTO settings', [defaultSettings]);
-        console.log('Settings seeded successfully');
-      }
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Settings seeding failed:', error);
-    return false;
+    // Don't throw error to prevent app from breaking
   }
 };
