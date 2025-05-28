@@ -1,5 +1,5 @@
 
-import { query, CountResult } from '../config/database';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface MenuItem {
   id: number;
@@ -10,33 +10,20 @@ export interface MenuItem {
   category: string;
   featured: boolean;
   in_stock: boolean;
-  created_at?: string; // Making created_at optional since it's added by the database
-}
-
-// Type guard to check if an object is a MenuItem
-function isMenuItem(obj: any): obj is MenuItem {
-  return obj && 
-    typeof obj.id === 'number' && 
-    typeof obj.name === 'string' &&
-    typeof obj.price === 'number' &&
-    typeof obj.category === 'string' &&
-    'description' in obj &&
-    'image' in obj &&
-    'featured' in obj &&
-    'in_stock' in obj;
-}
-
-// Type guard to check if an object is CountResult
-function isCountResult(obj: any): obj is CountResult {
-  return obj && typeof obj.count === 'string';
+  created_at?: string;
 }
 
 // Get all menu items
 export const getAllMenuItems = async (): Promise<MenuItem[]> => {
   try {
-    const data = await query('SELECT * FROM menu_items');
-    // Ensure we only return objects that match the MenuItem interface
-    return data.filter(isMenuItem) as MenuItem[];
+    const { data, error } = await supabase
+      .from('menu_items')
+      .select('*')
+      .order('id', { ascending: true });
+
+    if (error) throw error;
+
+    return data || [];
   } catch (error) {
     console.error('Error fetching menu items:', error);
     return [];
@@ -46,11 +33,14 @@ export const getAllMenuItems = async (): Promise<MenuItem[]> => {
 // Get menu item by ID
 export const getMenuItemById = async (id: number): Promise<MenuItem | null> => {
   try {
-    const data = await query('SELECT * FROM menu_items WHERE id = $1', [id]);
-    if (data.length > 0 && isMenuItem(data[0])) {
-      return data[0] as MenuItem;
-    }
-    return null;
+    const { data, error } = await supabase
+      .from('menu_items')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    return data;
   } catch (error) {
     console.error(`Error fetching menu item #${id}:`, error);
     return null;
@@ -60,9 +50,14 @@ export const getMenuItemById = async (id: number): Promise<MenuItem | null> => {
 // Get featured menu items
 export const getFeaturedMenuItems = async (): Promise<MenuItem[]> => {
   try {
-    const data = await query('SELECT * FROM menu_items WHERE featured = true');
-    // Ensure we only return objects that match the MenuItem interface
-    return data.filter(isMenuItem) as MenuItem[];
+    const { data, error } = await supabase
+      .from('menu_items')
+      .select('*')
+      .eq('featured', true)
+      .order('id', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
   } catch (error) {
     console.error('Error fetching featured menu items:', error);
     return [];
@@ -72,9 +67,14 @@ export const getFeaturedMenuItems = async (): Promise<MenuItem[]> => {
 // Get menu items by category
 export const getMenuItemsByCategory = async (category: string): Promise<MenuItem[]> => {
   try {
-    const data = await query('SELECT * FROM menu_items WHERE category = $1', [category]);
-    // Ensure we only return objects that match the MenuItem interface
-    return data.filter(isMenuItem) as MenuItem[];
+    const { data, error } = await supabase
+      .from('menu_items')
+      .select('*')
+      .eq('category', category)
+      .order('id', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
   } catch (error) {
     console.error(`Error fetching menu items for category ${category}:`, error);
     return [];
@@ -84,16 +84,22 @@ export const getMenuItemsByCategory = async (category: string): Promise<MenuItem
 // Create a new menu item
 export const createMenuItem = async (menuItem: Omit<MenuItem, 'id'>): Promise<MenuItem | null> => {
   try {
-    const { name, description, price, image, category, featured, in_stock } = menuItem;
-    const data = await query(
-      'INSERT INTO menu_items (name, description, price, image, category, featured, in_stock) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *', 
-      [name, description, price, image, category, featured, in_stock]
-    );
+    const { data, error } = await supabase
+      .from('menu_items')
+      .insert({
+        name: menuItem.name,
+        description: menuItem.description,
+        price: menuItem.price,
+        image: menuItem.image,
+        category: menuItem.category,
+        featured: menuItem.featured,
+        in_stock: menuItem.in_stock
+      })
+      .select()
+      .single();
     
-    if (data.length > 0 && isMenuItem(data[0])) {
-      return data[0] as MenuItem;
-    }
-    return null;
+    if (error) throw error;
+    return data;
   } catch (error) {
     console.error('Error creating menu item:', error);
     return null;
@@ -103,20 +109,26 @@ export const createMenuItem = async (menuItem: Omit<MenuItem, 'id'>): Promise<Me
 // Update an existing menu item
 export const updateMenuItem = async (id: number, menuItem: Partial<MenuItem>): Promise<MenuItem | null> => {
   try {
-    // Build the SET clause and params dynamically
-    const keys = Object.keys(menuItem).filter(key => key !== 'id');
-    if (keys.length === 0) return null;
+    const updateData: any = {};
     
-    const setClause = keys.map((key, i) => `${key} = $${i + 2}`).join(', ');
-    const values = keys.map(key => menuItem[key as keyof Partial<MenuItem>]);
+    // Only include fields that exist in the update object
+    if (menuItem.name !== undefined) updateData.name = menuItem.name;
+    if (menuItem.description !== undefined) updateData.description = menuItem.description;
+    if (menuItem.price !== undefined) updateData.price = menuItem.price;
+    if (menuItem.image !== undefined) updateData.image = menuItem.image;
+    if (menuItem.category !== undefined) updateData.category = menuItem.category;
+    if (menuItem.featured !== undefined) updateData.featured = menuItem.featured;
+    if (menuItem.in_stock !== undefined) updateData.in_stock = menuItem.in_stock;
+
+    const { data, error } = await supabase
+      .from('menu_items')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
     
-    const query_text = `UPDATE menu_items SET ${setClause} WHERE id = $1 RETURNING *`;
-    const data = await query(query_text, [id, ...values]);
-    
-    if (data.length > 0 && isMenuItem(data[0])) {
-      return data[0] as MenuItem;
-    }
-    return null;
+    if (error) throw error;
+    return data;
   } catch (error) {
     console.error(`Error updating menu item #${id}:`, error);
     return null;
@@ -126,8 +138,13 @@ export const updateMenuItem = async (id: number, menuItem: Partial<MenuItem>): P
 // Delete a menu item
 export const deleteMenuItem = async (id: number): Promise<boolean> => {
   try {
-    const data = await query('DELETE FROM menu_items WHERE id = $1 RETURNING id', [id]);
-    return data.length > 0;
+    const { error } = await supabase
+      .from('menu_items')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+    return true;
   } catch (error) {
     console.error(`Error deleting menu item #${id}:`, error);
     return false;
@@ -137,11 +154,15 @@ export const deleteMenuItem = async (id: number): Promise<boolean> => {
 // Toggle featured status
 export const toggleFeaturedStatus = async (id: number, featured: boolean): Promise<MenuItem | null> => {
   try {
-    const data = await query('UPDATE menu_items SET featured = $1 WHERE id = $2 RETURNING *', [featured, id]);
-    if (data.length > 0 && isMenuItem(data[0])) {
-      return data[0] as MenuItem;
-    }
-    return null;
+    const { data, error } = await supabase
+      .from('menu_items')
+      .update({ featured })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   } catch (error) {
     console.error(`Error toggling featured status for menu item #${id}:`, error);
     return null;
@@ -151,11 +172,15 @@ export const toggleFeaturedStatus = async (id: number, featured: boolean): Promi
 // Toggle in-stock status
 export const toggleInStockStatus = async (id: number, in_stock: boolean): Promise<MenuItem | null> => {
   try {
-    const data = await query('UPDATE menu_items SET in_stock = $1 WHERE id = $2 RETURNING *', [in_stock, id]);
-    if (data.length > 0 && isMenuItem(data[0])) {
-      return data[0] as MenuItem;
-    }
-    return null;
+    const { data, error } = await supabase
+      .from('menu_items')
+      .update({ in_stock })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   } catch (error) {
     console.error(`Error toggling in-stock status for menu item #${id}:`, error);
     return null;
@@ -165,8 +190,14 @@ export const toggleInStockStatus = async (id: number, in_stock: boolean): Promis
 // Get menu item categories
 export const getMenuItemCategories = async (): Promise<string[]> => {
   try {
-    const items = await getAllMenuItems();
-    const categories = [...new Set(items.map(item => item.category))];
+    const { data, error } = await supabase
+      .from('menu_items')
+      .select('category')
+      .order('category');
+
+    if (error) throw error;
+    
+    const categories = [...new Set(data?.map(item => item.category) || [])];
     return categories;
   } catch (error) {
     console.error('Error fetching menu item categories:', error);
@@ -177,11 +208,12 @@ export const getMenuItemCategories = async (): Promise<string[]> => {
 // Get count of menu items
 export const getMenuItemCount = async (): Promise<number> => {
   try {
-    const data = await query('SELECT COUNT(*) FROM menu_items');
-    if (data.length > 0 && isCountResult(data[0])) {
-      return parseInt(data[0].count, 10);
-    }
-    return 0;
+    const { count, error } = await supabase
+      .from('menu_items')
+      .select('*', { count: 'exact', head: true });
+
+    if (error) throw error;
+    return count || 0;
   } catch (error) {
     console.error('Error counting menu items:', error);
     return 0;

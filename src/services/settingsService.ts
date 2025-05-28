@@ -1,4 +1,6 @@
+
 import React from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface RestaurantSettings {
   id: number;
@@ -14,8 +16,6 @@ export interface RestaurantSettings {
   instagram_url?: string;
   twitter_url?: string;
 }
-
-const SETTINGS_KEY = 'restaurant_settings';
 
 // Default settings
 const defaultSettings: RestaurantSettings = {
@@ -35,13 +35,31 @@ const defaultSettings: RestaurantSettings = {
 
 export const getRestaurantSettings = async (): Promise<RestaurantSettings> => {
   try {
-    const savedSettings = localStorage.getItem(SETTINGS_KEY);
-    if (savedSettings) {
-      return JSON.parse(savedSettings);
+    const { data, error } = await supabase
+      .from('settings')
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('Error loading restaurant settings:', error);
+      return defaultSettings;
     }
-    // If no settings exist, save and return defaults
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(defaultSettings));
-    return defaultSettings;
+
+    // Map database fields to interface
+    return {
+      id: data.id,
+      restaurant_name: data.restaurant_name || defaultSettings.restaurant_name,
+      restaurant_address: data.restaurant_address || defaultSettings.restaurant_address,
+      restaurant_phone: data.restaurant_phone || defaultSettings.restaurant_phone,
+      restaurant_email: data.restaurant_email || defaultSettings.restaurant_email,
+      opening_hours: data.opening_hours || defaultSettings.opening_hours,
+      logo_url: '',
+      hero_image_url: defaultSettings.hero_image_url,
+      about_text: defaultSettings.about_text,
+      facebook_url: '',
+      instagram_url: '',
+      twitter_url: ''
+    };
   } catch (error) {
     console.error('Error loading restaurant settings:', error);
     return defaultSettings;
@@ -53,10 +71,39 @@ export const updateRestaurantSettings = async (
   settings: Partial<RestaurantSettings>
 ): Promise<RestaurantSettings> => {
   try {
-    const currentSettings = await getRestaurantSettings();
-    const updatedSettings = { ...currentSettings, ...settings, id };
-    
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(updatedSettings));
+    const { data, error } = await supabase
+      .from('settings')
+      .update({
+        restaurant_name: settings.restaurant_name,
+        restaurant_address: settings.restaurant_address,
+        restaurant_phone: settings.restaurant_phone,
+        restaurant_email: settings.restaurant_email,
+        opening_hours: settings.opening_hours,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating restaurant settings:', error);
+      throw error;
+    }
+
+    const updatedSettings: RestaurantSettings = {
+      id: data.id,
+      restaurant_name: data.restaurant_name,
+      restaurant_address: data.restaurant_address,
+      restaurant_phone: data.restaurant_phone,
+      restaurant_email: data.restaurant_email,
+      opening_hours: data.opening_hours,
+      logo_url: '',
+      hero_image_url: defaultSettings.hero_image_url,
+      about_text: defaultSettings.about_text,
+      facebook_url: '',
+      instagram_url: '',
+      twitter_url: ''
+    };
     
     // Trigger a custom event to notify components of settings change
     window.dispatchEvent(new CustomEvent('settingsUpdated', { 
