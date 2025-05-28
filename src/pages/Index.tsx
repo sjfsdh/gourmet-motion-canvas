@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Star, ChevronLeft, ChevronRight, MapPin, Clock, Phone } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import AnimatedSection from '@/components/animations/AnimatedSection';
 import StaggeredItems from '@/components/animations/StaggeredItems';
 import HeroBanner from '@/components/HeroBanner';
@@ -10,42 +11,7 @@ import FeatureCard from '@/components/FeatureCard';
 import SectionTitle from '@/components/ui/section-title';
 import { CustomButton } from '@/components/ui/custom-button';
 import MenuGrid from '@/components/menu/MenuGrid';
-
-// Mock data for featured dishes
-const featuredDishes = [
-  {
-    id: 1,
-    name: 'Truffle Risotto',
-    description: 'Creamy arborio rice with wild mushrooms and black truffle',
-    price: 24.99,
-    image: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80',
-    category: 'Mains'
-  },
-  {
-    id: 2,
-    name: 'Herb-Crusted Salmon',
-    description: 'Fresh Atlantic salmon with a crispy herb crust and lemon butter sauce',
-    price: 29.99,
-    image: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80',
-    category: 'Mains'
-  },
-  {
-    id: 3,
-    name: 'Chocolate Fondant',
-    description: 'Warm chocolate cake with a molten center and vanilla ice cream',
-    price: 12.99,
-    image: 'https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80',
-    category: 'Desserts'
-  },
-  {
-    id: 4,
-    name: 'Signature Cocktail',
-    description: 'House-infused botanicals with premium spirits and fresh citrus',
-    price: 14.99,
-    image: 'https://images.unsplash.com/photo-1536935338788-846bb9981813?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80',
-    category: 'Drinks'
-  }
-];
+import { getAllMenuItems, getFeaturedMenuItems } from '@/services/menuService';
 
 // Mock data for testimonials
 const testimonials = [
@@ -80,7 +46,17 @@ const Index = () => {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [email, setEmail] = useState('');
 
-  // Remove welcome popup completely
+  // Fetch featured menu items from database
+  const { data: featuredItems = [], isLoading: featuredLoading, error: featuredError } = useQuery({
+    queryKey: ['featuredMenuItems'],
+    queryFn: getFeaturedMenuItems
+  });
+
+  // Fetch all menu items for display
+  const { data: allMenuItems = [], isLoading: menuLoading, error: menuError } = useQuery({
+    queryKey: ['allMenuItems'],
+    queryFn: getAllMenuItems
+  });
 
   const nextTestimonial = () => {
     setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
@@ -122,7 +98,7 @@ const Index = () => {
         }}
       />
 
-      {/* Featured Dishes - Updated to use MenuGrid */}
+      {/* Featured Dishes - Using real database data */}
       <section className="section-padding bg-gradient-light">
         <div className="container-custom">
           <SectionTitle 
@@ -133,11 +109,13 @@ const Index = () => {
 
           <AnimatedSection animation="fadeIn">
             <MenuGrid 
-              items={featuredDishes} 
+              items={featuredItems} 
               activeCategory="all" 
               onClearFilters={clearFilters}
               showFeatured={true}
               columns={4}
+              isLoading={featuredLoading}
+              error={featuredError}
             />
           </AnimatedSection>
 
@@ -193,6 +171,37 @@ const Index = () => {
               }
               delay={0.6}
             />
+          </div>
+        </div>
+      </section>
+
+      {/* Popular Menu Items */}
+      <section className="section-padding bg-gray-50">
+        <div className="container-custom">
+          <SectionTitle 
+            title="Popular Menu Items"
+            subtitle="Try our most loved dishes that keep customers coming back"
+            animation="slideUp"
+          />
+
+          <AnimatedSection animation="fadeIn">
+            <MenuGrid 
+              items={allMenuItems.slice(0, 6)} 
+              activeCategory="all" 
+              onClearFilters={clearFilters}
+              showFeatured={false}
+              columns={3}
+              isLoading={menuLoading}
+              error={menuError}
+            />
+          </AnimatedSection>
+
+          <div className="text-center mt-12">
+            <CustomButton>
+              <Link to="/menu" className="flex items-center gap-2">
+                Explore Full Menu <ArrowRight size={18} />
+              </Link>
+            </CustomButton>
           </div>
         </div>
       </section>
