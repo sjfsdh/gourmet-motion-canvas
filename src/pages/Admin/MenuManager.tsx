@@ -5,6 +5,7 @@ import { Edit, Trash2, Plus, Image, AlertCircle, Check, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAllMenuItems, createMenuItem, updateMenuItem, deleteMenuItem, toggleFeaturedStatus, toggleInStockStatus } from '@/services/menuService';
+import { getAllCategories } from '@/services/categoryService';
 
 const MenuManager = () => {
   const [editItem, setEditItem] = useState<any>(null);
@@ -18,20 +19,18 @@ const MenuManager = () => {
     queryFn: getAllMenuItems
   });
 
-  // Categories for the dropdown
-  const categories = [
-    { id: 'starters', name: 'Starters' },
-    { id: 'mains', name: 'Mains' },
-    { id: 'sides', name: 'Sides' },
-    { id: 'desserts', name: 'Desserts' },
-    { id: 'drinks', name: 'Drinks' }
-  ];
+  // Fetch categories from database
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: getAllCategories
+  });
 
   // Mutations for CRUD operations
   const createMutation = useMutation({
     mutationFn: createMenuItem,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['menuItems'] });
+      queryClient.invalidateQueries({ queryKey: ['featuredMenuItems'] });
       toast({
         title: "Item Added",
         description: "New menu item has been successfully added",
@@ -51,6 +50,7 @@ const MenuManager = () => {
     mutationFn: ({ id, data }: { id: number; data: any }) => updateMenuItem(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['menuItems'] });
+      queryClient.invalidateQueries({ queryKey: ['featuredMenuItems'] });
       toast({
         title: "Item Updated",
         description: "Menu item has been successfully updated",
@@ -70,6 +70,7 @@ const MenuManager = () => {
     mutationFn: deleteMenuItem,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['menuItems'] });
+      queryClient.invalidateQueries({ queryKey: ['featuredMenuItems'] });
       toast({
         title: "Item Deleted",
         description: "Menu item has been successfully removed",
@@ -88,6 +89,7 @@ const MenuManager = () => {
     mutationFn: ({ id, in_stock }: { id: number; in_stock: boolean }) => toggleInStockStatus(id, in_stock),
     onSuccess: (updatedItem) => {
       queryClient.invalidateQueries({ queryKey: ['menuItems'] });
+      queryClient.invalidateQueries({ queryKey: ['featuredMenuItems'] });
       toast({
         title: updatedItem?.in_stock ? "Item In Stock" : "Item Out of Stock",
         description: `${updatedItem?.name} is now ${updatedItem?.in_stock ? 'available' : 'unavailable'} for ordering`,
@@ -99,6 +101,7 @@ const MenuManager = () => {
     mutationFn: ({ id, featured }: { id: number; featured: boolean }) => toggleFeaturedStatus(id, featured),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['menuItems'] });
+      queryClient.invalidateQueries({ queryKey: ['featuredMenuItems'] });
     }
   });
 
@@ -108,7 +111,7 @@ const MenuManager = () => {
       name: '',
       description: '',
       price: 0,
-      category: 'starters',
+      category: categories.length > 0 ? categories[0].name : 'starters',
       image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085',
       featured: false,
       in_stock: true
@@ -277,8 +280,8 @@ const MenuManager = () => {
                         className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
                       >
                         {categories.map((category) => (
-                          <option key={category.id} value={category.id}>
-                            {category.name}
+                          <option key={category.id} value={category.name}>
+                            {category.display_name}
                           </option>
                         ))}
                       </select>
@@ -413,7 +416,7 @@ const MenuManager = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                    {categories.find(cat => cat.id === item.category)?.name}
+                    {categories.find(cat => cat.name === item.category)?.display_name || item.category}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

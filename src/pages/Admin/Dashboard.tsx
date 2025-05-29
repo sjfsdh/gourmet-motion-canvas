@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   ShoppingCart, 
@@ -13,13 +13,15 @@ import {
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getAllMenuItems, getMenuItemCount } from '@/services/menuService';
-import { getOrderStats, getAllOrders, Order } from '@/services/orderService';
+import { getAllDatabaseOrders, getDatabaseOrderStats, updateOrderStatus, OrderWithItems } from '@/services/databaseOrderService';
 import ViewDetailsModal from '@/components/modals/ViewDetailsModal';
 import { CustomButton } from '@/components/ui/custom-button';
+import { useToast } from '@/hooks/use-toast';
 
 const Dashboard = () => {
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<OrderWithItems | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { toast } = useToast();
 
   // Fetch menu items count
   const { data: menuItemsCount = 0 } = useQuery({
@@ -27,8 +29,19 @@ const Dashboard = () => {
     queryFn: getMenuItemCount
   });
 
-  // Get order statistics (from localStorage for now)
-  const [dashboardStats, setDashboardStats] = useState({
+  // Fetch orders from database
+  const { data: orders = [], isLoading: ordersLoading, refetch: refetchOrders } = useQuery({
+    queryKey: ['databaseOrders'],
+    queryFn: getAllDatabaseOrders
+  });
+
+  // Fetch order statistics
+  const { data: dashboardStats } = useQuery({
+    queryKey: ['orderStats'],
+    queryFn: getDatabaseOrderStats
+  });
+
+  const stats = dashboardStats || {
     totalOrders: 0,
     totalRevenue: 0,
     pendingOrders: 0,
@@ -37,39 +50,7 @@ const Dashboard = () => {
     deliveredOrders: 0,
     todayOrders: 0,
     todayRevenue: 0
-  });
-
-  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
-
-  useEffect(() => {
-    const loadDashboardData = () => {
-      // Load stats
-      const stats = getOrderStats();
-      setDashboardStats(stats);
-
-      // Load recent orders (last 10)
-      const allOrders = getAllOrders();
-      const sortedOrders = allOrders
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, 10);
-      setRecentOrders(sortedOrders);
-    };
-
-    loadDashboardData();
-
-    // Listen for order updates
-    const handleOrderUpdate = () => {
-      loadDashboardData();
-    };
-
-    window.addEventListener('orderCreated', handleOrderUpdate);
-    window.addEventListener('orderUpdated', handleOrderUpdate);
-
-    return () => {
-      window.removeEventListener('orderCreated', handleOrderUpdate);
-      window.removeEventListener('orderUpdated', handleOrderUpdate);
-    };
-  }, []);
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -95,9 +76,26 @@ const Dashboard = () => {
     }
   };
 
-  const handleViewOrder = (order: Order) => {
+  const handleViewOrder = (order: OrderWithItems) => {
     setSelectedOrder(order);
     setIsModalOpen(true);
+  };
+
+  const handleStatusUpdate = async (orderId: number, newStatus: any) => {
+    try {
+      await updateOrderStatus(orderId, newStatus);
+      refetchOrders();
+      toast({
+        title: "Order Updated",
+        description: `Order status changed to ${newStatus}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update order status",
+        variant: "destructive"
+      });
+    }
   };
 
   const statsCards = [
@@ -110,23 +108,23 @@ const Dashboard = () => {
     },
     { 
       title: "Total Orders", 
-      value: dashboardStats.totalOrders.toString(), 
+      value: stats.totalOrders.toString(), 
       icon: ShoppingCart, 
-      change: dashboardStats.todayOrders > 0 ? `+${dashboardStats.todayOrders} today` : "No orders today", 
+      change: stats.todayOrders > 0 ? `+${stats.todayOrders} today` : "No orders today", 
       color: "bg-green-500" 
     },
     { 
       title: "Total Revenue", 
-      value: formatCurrency(dashboardStats.totalRevenue), 
+      value: formatCurrency(stats.totalRevenue), 
       icon: DollarSign, 
-      change: dashboardStats.todayRevenue > 0 ? `+${formatCurrency(dashboardStats.todayRevenue)} today` : "No revenue today", 
+      change: stats.todayRevenue > 0 ? `+${formatCurrency(stats.todayRevenue)} today` : "No revenue today", 
       color: "bg-purple-500" 
     },
     { 
       title: "Pending Orders", 
-      value: dashboardStats.pendingOrders.toString(), 
+      value: stats.pendingOrders.toString(), 
       icon: AlertTriangle, 
-      change: dashboardStats.preparingOrders > 0 ? `${dashboardStats.preparingOrders} preparing` : "No orders preparing", 
+      change: stats.preparingOrders > 0 ? `${stats.preparingOrders} preparing` : "No orders preparing", 
       color: "bg-orange-500" 
     },
   ];
@@ -168,12 +166,13 @@ const Dashboard = () => {
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-semibold">Recent Orders</h2>
-          <CustomButton variant="outline" size="sm">
-            View All Orders
-          </CustomButton>
         </div>
         
-        {recentOrders.length === 0 ? (
+        {ordersLoading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-restaurant-green mx-auto"></div>
+          </div>
+        ) : orders.length === 0 ? (
           <div className="text-center py-8">
             <ShoppingCart size={48} className="mx-auto text-gray-300 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No orders yet</h3>
@@ -193,24 +192,33 @@ const Dashboard = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {recentOrders.map((order) => (
+                {orders.slice(0, 10).map((order) => (
                   <tr key={order.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      #{order.id.slice(-8)}
+                      #{order.id}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {order.user_name}
+                      {order.customer_name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(order.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                      </span>
+                      <select
+                        value={order.status}
+                        onChange={(e) => handleStatusUpdate(order.id, e.target.value)}
+                        className={`px-2 py-1 text-xs font-semibold rounded-full border-0 ${getStatusColor(order.status)}`}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="preparing">Preparing</option>
+                        <option value="ready">Ready</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatCurrency(order.total)}
+                      {formatCurrency(Number(order.total))}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <button 
@@ -243,13 +251,13 @@ const Dashboard = () => {
         <div className="h-64 flex items-center justify-center text-gray-500">
           <div className="flex flex-col items-center">
             <TrendingUp size={48} className="text-gray-300 mb-3" />
-            {dashboardStats.totalRevenue > 0 ? (
+            {stats.totalRevenue > 0 ? (
               <div className="text-center">
                 <p className="text-lg font-semibold text-gray-700">
-                  Total Revenue: {formatCurrency(dashboardStats.totalRevenue)}
+                  Total Revenue: {formatCurrency(stats.totalRevenue)}
                 </p>
                 <p className="text-sm text-gray-500">
-                  From {dashboardStats.totalOrders} orders
+                  From {stats.totalOrders} orders
                 </p>
                 <p className="text-sm text-gray-500 mt-2">
                   Menu Items: {menuItemsCount}

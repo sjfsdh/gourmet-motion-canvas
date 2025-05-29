@@ -3,85 +3,125 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Edit, Trash2, Plus, X, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { CustomButton } from '@/components/ui/custom-button';
-
-// Initial categories
-const initialCategories = [
-  { id: 'starters', name: 'Starters' },
-  { id: 'mains', name: 'Mains' },
-  { id: 'sides', name: 'Sides' },
-  { id: 'desserts', name: 'Desserts' },
-  { id: 'drinks', name: 'Drinks' }
-];
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getAllCategories, createCategory, updateCategory, deleteCategory, Category } from '@/services/categoryService';
 
 const CategoryManager = () => {
-  const [categories, setCategories] = useState(initialCategories);
-  const [editingCategory, setEditingCategory] = useState<any>(null);
-  const [newCategory, setNewCategory] = useState({ id: '', name: '' });
+  const [editingCategory, setEditingCategory] = useState<(Category & { originalId?: number }) | null>(null);
+  const [newCategory, setNewCategory] = useState({ name: '', display_name: '', order_index: 0 });
   const [isAddingNew, setIsAddingNew] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Fetch categories
+  const { data: categories = [], isLoading, error } = useQuery({
+    queryKey: ['categories'],
+    queryFn: getAllCategories
+  });
+
+  // Mutations
+  const createMutation = useMutation({
+    mutationFn: createCategory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      toast({
+        title: "Category Added",
+        description: `${newCategory.display_name} has been added`,
+      });
+      setNewCategory({ name: '', display_name: '', order_index: 0 });
+      setIsAddingNew(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to add category",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<Category> }) => updateCategory(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      toast({
+        title: "Category Updated",
+        description: "Category has been updated successfully",
+      });
+      setEditingCategory(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update category",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteCategory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      toast({
+        title: "Category Deleted",
+        description: "Category has been removed",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete category",
+        variant: "destructive"
+      });
+    }
+  });
 
   const handleAddCategory = () => {
-    if (!newCategory.id || !newCategory.name) {
+    if (!newCategory.name || !newCategory.display_name) {
       toast({
         title: "Error",
-        description: "Category ID and name are required",
+        description: "Category name and display name are required",
         variant: "destructive"
       });
       return;
     }
 
-    if (categories.some(cat => cat.id === newCategory.id)) {
-      toast({
-        title: "Error",
-        description: "Category ID already exists",
-        variant: "destructive"
-      });
-      return;
-    }
+    const categoryData = {
+      name: newCategory.name.toLowerCase().replace(/\s+/g, '-'),
+      display_name: newCategory.display_name,
+      order_index: categories.length + 1
+    };
 
-    setCategories([...categories, newCategory]);
-    setNewCategory({ id: '', name: '' });
-    setIsAddingNew(false);
-    
-    toast({
-      title: "Category Added",
-      description: `${newCategory.name} has been added`,
-    });
+    createMutation.mutate(categoryData);
   };
 
-  const handleEditCategory = (category: any) => {
-    setEditingCategory({ ...category });
+  const handleEditCategory = (category: Category) => {
+    setEditingCategory({ ...category, originalId: category.id });
   };
 
   const handleSaveEdit = () => {
-    if (!editingCategory.id || !editingCategory.name) {
+    if (!editingCategory || !editingCategory.name || !editingCategory.display_name) {
       toast({
         title: "Error",
-        description: "Category ID and name are required",
+        description: "Category name and display name are required",
         variant: "destructive"
       });
       return;
     }
 
-    setCategories(categories.map(cat => 
-      cat.id === editingCategory.originalId ? { id: editingCategory.id, name: editingCategory.name } : cat
-    ));
-    setEditingCategory(null);
-    
-    toast({
-      title: "Category Updated",
-      description: "Category has been updated successfully",
+    updateMutation.mutate({
+      id: editingCategory.originalId!,
+      data: {
+        name: editingCategory.name,
+        display_name: editingCategory.display_name,
+        order_index: editingCategory.order_index
+      }
     });
   };
 
-  const handleDeleteCategory = (id: string) => {
-    setCategories(categories.filter(cat => cat.id !== id));
-    
-    toast({
-      title: "Category Deleted",
-      description: "Category has been removed",
-    });
+  const handleDeleteCategory = (id: number) => {
+    deleteMutation.mutate(id);
   };
 
   const cancelEdit = () => {
@@ -90,8 +130,29 @@ const CategoryManager = () => {
 
   const cancelAdd = () => {
     setIsAddingNew(false);
-    setNewCategory({ id: '', name: '' });
+    setNewCategory({ name: '', display_name: '', order_index: 0 });
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-restaurant-green"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="text-center py-8">
+          <h3 className="text-lg font-medium text-red-900 mb-2">Error Loading Categories</h3>
+          <p className="text-red-500">Failed to load categories. Please try again.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -115,10 +176,13 @@ const CategoryManager = () => {
           <thead className="bg-gray-50">
             <tr>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                ID
+                Name
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Name
+                Display Name
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Order
               </th>
               <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
@@ -131,24 +195,34 @@ const CategoryManager = () => {
                 <td className="px-6 py-4 whitespace-nowrap">
                   <input
                     type="text"
-                    value={newCategory.id}
-                    onChange={(e) => setNewCategory({...newCategory, id: e.target.value.toLowerCase().replace(/\s+/g, '-')})}
+                    value={newCategory.name}
+                    onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
-                    placeholder="category-id"
+                    placeholder="category-name"
                   />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <input
                     type="text"
-                    value={newCategory.name}
-                    onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
+                    value={newCategory.display_name}
+                    onChange={(e) => setNewCategory({...newCategory, display_name: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
-                    placeholder="Category Name"
+                    placeholder="Display Name"
+                  />
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <input
+                    type="number"
+                    value={newCategory.order_index}
+                    onChange={(e) => setNewCategory({...newCategory, order_index: parseInt(e.target.value)})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
+                    placeholder="Order"
                   />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button
                     onClick={handleAddCategory}
+                    disabled={createMutation.isPending}
                     className="text-green-600 hover:text-green-900 mr-4"
                   >
                     <Check size={18} />
@@ -169,22 +243,31 @@ const CategoryManager = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <input
                         type="text"
-                        value={editingCategory.id}
-                        onChange={(e) => setEditingCategory({...editingCategory, id: e.target.value.toLowerCase().replace(/\s+/g, '-')})}
+                        value={editingCategory.name}
+                        onChange={(e) => setEditingCategory({...editingCategory, name: e.target.value})}
                         className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
                       />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <input
                         type="text"
-                        value={editingCategory.name}
-                        onChange={(e) => setEditingCategory({...editingCategory, name: e.target.value})}
+                        value={editingCategory.display_name}
+                        onChange={(e) => setEditingCategory({...editingCategory, display_name: e.target.value})}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
+                      />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <input
+                        type="number"
+                        value={editingCategory.order_index}
+                        onChange={(e) => setEditingCategory({...editingCategory, order_index: parseInt(e.target.value)})}
                         className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
                       />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         onClick={handleSaveEdit}
+                        disabled={updateMutation.isPending}
                         className="text-green-600 hover:text-green-900 mr-4"
                       >
                         <Check size={18} />
@@ -199,17 +282,19 @@ const CategoryManager = () => {
                   </>
                 ) : (
                   <>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{category.id}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{category.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{category.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{category.display_name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{category.order_index}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
-                        onClick={() => handleEditCategory({...category, originalId: category.id})}
+                        onClick={() => handleEditCategory(category)}
                         className="text-blue-600 hover:text-blue-900 mr-4"
                       >
                         <Edit size={18} />
                       </button>
                       <button
                         onClick={() => handleDeleteCategory(category.id)}
+                        disabled={deleteMutation.isPending}
                         className="text-red-600 hover:text-red-900"
                       >
                         <Trash2 size={18} />
