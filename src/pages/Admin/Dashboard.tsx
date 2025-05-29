@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -274,7 +273,7 @@ const Dashboard = () => {
       <ViewDetailsModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        order={selectedOrder}
+        order={selectedOrder as any}
         type="order"
       />
     </div>

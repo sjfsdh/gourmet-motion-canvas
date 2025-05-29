@@ -56,6 +56,8 @@ export const getAllDatabaseOrders = async (): Promise<OrderWithItems[]> => {
 
     return (data || []).map(order => ({
       ...order,
+      status: order.status as DatabaseOrder['status'],
+      payment_status: order.payment_status as DatabaseOrder['payment_status'],
       items: order.order_items.map((item: any) => ({
         ...item,
         menu_item: item.menu_items
@@ -84,7 +86,11 @@ export const updateOrderStatus = async (orderId: number, status: DatabaseOrder['
       throw error;
     }
 
-    return data;
+    return {
+      ...data,
+      status: data.status as DatabaseOrder['status'],
+      payment_status: data.payment_status as DatabaseOrder['payment_status']
+    };
   } catch (error) {
     console.error('Error in updateOrderStatus:', error);
     throw error;
@@ -146,7 +152,11 @@ export const createDatabaseOrder = async (orderData: {
       throw itemsError;
     }
 
-    return order;
+    return {
+      ...order,
+      status: order.status as DatabaseOrder['status'],
+      payment_status: order.payment_status as DatabaseOrder['payment_status']
+    };
   } catch (error) {
     console.error('Error in createDatabaseOrder:', error);
     throw error;

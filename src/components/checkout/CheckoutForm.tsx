@@ -8,7 +8,7 @@ import { createDatabaseOrder } from '@/services/databaseOrderService';
 import { CustomButton } from '@/components/ui/custom-button';
 
 const CheckoutForm = () => {
-  const { items, total, clearCart } = useCart();
+  const { cart, cartTotal, clearCart } = useCart();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   
@@ -35,7 +35,7 @@ const CheckoutForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (items.length === 0) {
+    if (cart.length === 0) {
       toast({
         title: "Empty Cart",
         description: "Please add items to your cart before checkout",
@@ -48,7 +48,7 @@ const CheckoutForm = () => {
 
     try {
       // Create order in database
-      const orderItems = items.map(item => ({
+      const orderItems = cart.map(item => ({
         menu_item_id: item.id,
         quantity: item.quantity,
         price: item.price
@@ -58,7 +58,7 @@ const CheckoutForm = () => {
         customer_name: formData.customerName,
         customer_email: formData.customerEmail,
         customer_phone: formData.customerPhone,
-        total: total,
+        total: cartTotal,
         status: 'pending',
         payment_status: 'paid', // Demo: assume payment is successful
         payment_method: formData.paymentMethod,
@@ -71,7 +71,7 @@ const CheckoutForm = () => {
 
       toast({
         title: "Order Placed Successfully!",
-        description: `Your order of ${formatCurrency(total)} has been placed. You will receive a confirmation email shortly.`,
+        description: `Your order of ${formatCurrency(cartTotal)} has been placed. You will receive a confirmation email shortly.`,
       });
 
       // Reset form
@@ -286,10 +286,10 @@ const CheckoutForm = () => {
         <div className="flex justify-center">
           <CustomButton 
             type="submit" 
-            disabled={isProcessing || items.length === 0}
+            disabled={isProcessing || cart.length === 0}
             className="w-full max-w-md py-3 text-lg"
           >
-            {isProcessing ? 'Processing...' : `Place Order - ${formatCurrency(total)}`}
+            {isProcessing ? 'Processing...' : `Place Order - ${formatCurrency(cartTotal)}`}
           </CustomButton>
         </div>
 
