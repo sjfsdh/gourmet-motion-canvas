@@ -1,215 +1,208 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Save, Loader2 } from 'lucide-react';
+import { Save, Settings, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { CustomButton } from '@/components/ui/custom-button';
-import { supabase } from '@/integrations/supabase/client';
-import { getRestaurantSettings, updateRestaurantSettings } from '@/services/settingsService';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getRestaurantSettings, updateRestaurantSettings, RestaurantSettings } from '@/services/settingsService';
 
-interface SettingsFormData {
-  restaurant_name: string;
-  restaurant_address: string;
-  restaurant_phone: string;
-  restaurant_email: string;
-  opening_hours: string;
-}
-
-const AdminSettings: React.FC = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [settingsId, setSettingsId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<SettingsFormData>({
+const AdminSettings = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  const [settings, setSettings] = useState<RestaurantSettings>({
+    id: 1,
     restaurant_name: '',
     restaurant_address: '',
     restaurant_phone: '',
     restaurant_email: '',
     opening_hours: '',
+    logo_url: '',
+    hero_image_url: '',
+    about_text: '',
+    facebook_url: '',
+    instagram_url: '',
+    twitter_url: ''
   });
-  const { toast } = useToast();
 
-  // Fetch settings on component mount
+  // Fetch current settings
+  const { data: currentSettings, isLoading } = useQuery({
+    queryKey: ['restaurantSettings'],
+    queryFn: getRestaurantSettings
+  });
+
+  // Update local state when settings are loaded
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        setIsLoading(true);
-        const settings = await getRestaurantSettings();
-        
-        if (settings) {
-          setSettingsId(settings.id);
-          setFormData({
-            restaurant_name: settings.restaurant_name || '',
-            restaurant_address: settings.restaurant_address || '',
-            restaurant_phone: settings.restaurant_phone || '',
-            restaurant_email: settings.restaurant_email || '',
-            opening_hours: settings.opening_hours || '',
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching settings:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load restaurant settings.',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (currentSettings) {
+      setSettings(currentSettings);
+    }
+  }, [currentSettings]);
 
-    fetchSettings();
-  }, [toast]);
+  // Mutation for updating settings
+  const updateMutation = useMutation({
+    mutationFn: (updatedSettings: Partial<RestaurantSettings>) => 
+      updateRestaurantSettings(settings.id, updatedSettings),
+    onSuccess: (updatedSettings) => {
+      queryClient.invalidateQueries({ queryKey: ['restaurantSettings'] });
+      // Trigger custom event to update components across the app
+      window.dispatchEvent(new CustomEvent('settingsUpdated', { 
+        detail: updatedSettings 
+      }));
+      toast({
+        title: "Settings Updated",
+        description: "Restaurant settings have been updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update settings. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
 
-  // Handle form input changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const handleInputChange = (field: keyof RestaurantSettings, value: string) => {
+    setSettings(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!settingsId) {
-      toast({
-        title: 'Error',
-        description: 'Settings ID not found.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-      const updatedSettings = await updateRestaurantSettings(settingsId, formData);
-      
-      if (updatedSettings) {
-        toast({
-          title: 'Success',
-          description: 'Restaurant settings have been updated.',
-        });
-      } else {
-        throw new Error('Failed to update settings');
-      }
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save restaurant settings.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSaving(false);
-    }
+  const handleSave = () => {
+    updateMutation.mutate(settings);
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
-        <Loader2 size={40} className="animate-spin text-gray-400" />
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-restaurant-green"></div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Restaurant Settings</h1>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-2xl font-bold mb-1 flex items-center">
+            <Settings className="mr-2" />
+            Restaurant Settings
+          </h1>
+          <p className="text-gray-500">Manage your restaurant information and settings</p>
+        </div>
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleSave}
+          disabled={updateMutation.isPending}
+          className="bg-restaurant-green text-white px-6 py-2 rounded-lg flex items-center disabled:opacity-50"
+        >
+          <Save size={20} className="mr-2" />
+          {updateMutation.isPending ? 'Saving...' : 'Save Settings'}
+        </motion.button>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-lg shadow-md p-6"
-      >
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Basic Information */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold mb-6">Basic Information</h2>
+          
+          <div className="space-y-4">
             <div>
-              <label htmlFor="restaurant_name" className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Restaurant Name
               </label>
               <input
                 type="text"
-                id="restaurant_name"
-                name="restaurant_name"
-                value={formData.restaurant_name}
-                onChange={handleChange}
-                required
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={settings.restaurant_name}
+                onChange={(e) => handleInputChange('restaurant_name', e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
+                placeholder="Enter restaurant name"
               />
             </div>
 
             <div>
-              <label htmlFor="restaurant_address" className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Address
               </label>
               <textarea
-                id="restaurant_address"
-                name="restaurant_address"
-                value={formData.restaurant_address}
-                onChange={handleChange}
                 rows={3}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={settings.restaurant_address}
+                onChange={(e) => handleInputChange('restaurant_address', e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
+                placeholder="Enter restaurant address"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="restaurant_phone" className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Phone Number
                 </label>
                 <input
                   type="tel"
-                  id="restaurant_phone"
-                  name="restaurant_phone"
-                  value={formData.restaurant_phone}
-                  onChange={handleChange}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={settings.restaurant_phone}
+                  onChange={(e) => handleInputChange('restaurant_phone', e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
+                  placeholder="Enter phone number"
                 />
               </div>
-              
+
               <div>
-                <label htmlFor="restaurant_email" className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Email Address
                 </label>
                 <input
                   type="email"
-                  id="restaurant_email"
-                  name="restaurant_email"
-                  value={formData.restaurant_email}
-                  onChange={handleChange}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={settings.restaurant_email}
+                  onChange={(e) => handleInputChange('restaurant_email', e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
+                  placeholder="Enter email address"
                 />
               </div>
             </div>
+          </div>
+        </div>
 
-            <div>
-              <label htmlFor="opening_hours" className="block text-sm font-medium text-gray-700 mb-1">
-                Opening Hours
-              </label>
-              <textarea
-                id="opening_hours"
-                name="opening_hours"
-                value={formData.opening_hours}
-                onChange={handleChange}
-                rows={3}
-                placeholder="e.g., Mon-Fri: 9AM - 10PM, Sat-Sun: 10AM - 11PM"
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div className="flex justify-end">
-              <CustomButton 
-                type="submit" 
-                disabled={isSaving}
-                icon={isSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
-              >
-                {isSaving ? 'Saving...' : 'Save Settings'}
-              </CustomButton>
+        {/* Operating Hours */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold mb-6">Operating Hours</h2>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Opening Hours
+            </label>
+            <textarea
+              rows={6}
+              value={settings.opening_hours}
+              onChange={(e) => handleInputChange('opening_hours', e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
+              placeholder="Monday - Friday: 8:00 AM - 10:00 PM&#10;Saturday: 9:00 AM - 11:00 PM&#10;Sunday: 10:00 AM - 9:00 PM"
+            />
+            <div className="flex items-center mt-2 text-sm text-gray-500">
+              <AlertCircle size={16} className="mr-2" />
+              Use line breaks to separate different days
             </div>
           </div>
-        </form>
-      </motion.div>
+        </div>
+      </div>
+
+      {/* Update confirmation */}
+      {updateMutation.isSuccess && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-6 p-4 bg-green-50 border border-green-200 rounded-md"
+        >
+          <div className="flex items-center text-green-800">
+            <Settings className="mr-2" size={20} />
+            Settings have been updated successfully! Changes will be reflected across the site.
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 };

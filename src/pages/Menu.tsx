@@ -7,17 +7,8 @@ import MenuSearch from '@/components/menu/MenuSearch';
 import CategoryFilter from '@/components/menu/CategoryFilter';
 import MenuGrid from '@/components/menu/MenuGrid';
 import { getAllMenuItems } from '@/services/menuService';
+import { getAllCategories } from '@/services/categoryService';
 import { useQuery } from '@tanstack/react-query';
-
-// Menu categories
-const categories = [
-  { id: 'all', name: 'All Items' },
-  { id: 'starters', name: 'Starters' },
-  { id: 'mains', name: 'Mains' },
-  { id: 'sides', name: 'Sides' },
-  { id: 'desserts', name: 'Desserts' },
-  { id: 'drinks', name: 'Drinks' }
-];
 
 const Menu: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState('all');
@@ -30,6 +21,18 @@ const Menu: React.FC = () => {
     queryKey: ['menuItems'],
     queryFn: getAllMenuItems
   });
+
+  // Fetch categories from database
+  const { data: categoriesData = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: getAllCategories
+  });
+
+  // Transform categories data to include 'all' option
+  const categories = [
+    { id: 'all', name: 'All Items' },
+    ...categoriesData.map(cat => ({ id: cat.name, name: cat.display_name }))
+  ];
   
   // Update displayItems whenever menuItems, activeCategory or searchTerm changes
   useEffect(() => {
@@ -126,19 +129,7 @@ const Menu: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
               >
-                <h2 className="text-2xl font-bold mb-6 flex items-center">
-                  <span className="border-b-2 border-restaurant-terracotta pb-1">
-                    {activeCategory === 'all' ? 'All Menu Items' : categories.find(cat => cat.id === activeCategory)?.name}
-                  </span>
-                  {!isLoading && !error && (
-                    <span className="ml-3 bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs">
-                      {displayItems.length} items
-                    </span>
-                  )}
-                </h2>
-                
                 <MenuGrid
                   items={displayItems}
                   activeCategory={activeCategory}
