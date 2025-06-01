@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Edit, Trash2, Plus, Image, AlertCircle, Check, X } from 'lucide-react';
@@ -154,18 +153,9 @@ const MenuManager = () => {
     }
   };
 
-  const handleToggleStock = (item: any) => {
-    toggleStockMutation.mutate({
-      id: item.id,
-      in_stock: !item.in_stock
-    });
-  };
-
-  const handleToggleFeatured = (item: any) => {
-    toggleFeaturedMutation.mutate({
-      id: item.id,
-      featured: !item.featured
-    });
+  const handleCloseModal = () => {
+    setEditItem(null);
+    setIsAdding(false);
   };
 
   if (isLoading) {
@@ -206,60 +196,64 @@ const MenuManager = () => {
         </motion.button>
       </div>
 
-      {/* Item editor modal */}
+      {/* Fixed Item editor modal with better sizing */}
       {editItem && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+          onClick={handleCloseModal}
         >
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-lg shadow-xl w-full max-w-3xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto"
           >
-            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+            <div className="p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white">
               <h2 className="text-xl font-semibold">
                 {isAdding ? 'Add New Menu Item' : 'Edit Menu Item'}
               </h2>
               <button
-                onClick={() => setEditItem(null)}
-                className="text-gray-500 hover:text-gray-700"
+                onClick={handleCloseModal}
+                className="text-gray-500 hover:text-gray-700 p-2"
               >
                 <X size={24} />
               </button>
             </div>
 
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="p-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Name
                     </label>
                     <input
                       type="text"
                       value={editItem.name}
                       onChange={(e) => setEditItem({ ...editItem, name: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green text-lg"
+                      placeholder="Enter item name"
                     />
                   </div>
 
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Description
                     </label>
                     <textarea
-                      rows={3}
+                      rows={4}
                       value={editItem.description}
                       onChange={(e) => setEditItem({ ...editItem, description: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green text-lg"
+                      placeholder="Enter item description"
                     ></textarea>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
                         Price ($)
                       </label>
                       <input
@@ -267,17 +261,17 @@ const MenuManager = () => {
                         step="0.01"
                         value={editItem.price}
                         onChange={(e) => setEditItem({ ...editItem, price: parseFloat(e.target.value) })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green text-lg"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
                         Category
                       </label>
                       <select
                         value={editItem.category}
                         onChange={(e) => setEditItem({ ...editItem, category: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green text-lg"
                       >
                         {categories.map((category) => (
                           <option key={category.id} value={category.name}>
@@ -288,16 +282,16 @@ const MenuManager = () => {
                     </div>
                   </div>
 
-                  <div className="flex space-x-6 mb-6">
+                  <div className="flex space-x-8">
                     <div className="flex items-center">
                       <input
                         type="checkbox"
                         id="featured"
                         checked={editItem.featured}
                         onChange={(e) => setEditItem({ ...editItem, featured: e.target.checked })}
-                        className="h-4 w-4 text-restaurant-green focus:ring-restaurant-green border-gray-300 rounded"
+                        className="h-5 w-5 text-restaurant-green focus:ring-restaurant-green border-gray-300 rounded"
                       />
-                      <label htmlFor="featured" className="ml-2 block text-sm text-gray-700">
+                      <label htmlFor="featured" className="ml-3 block text-sm font-medium text-gray-700">
                         Featured Item
                       </label>
                     </div>
@@ -307,33 +301,34 @@ const MenuManager = () => {
                         id="inStock"
                         checked={editItem.in_stock}
                         onChange={(e) => setEditItem({ ...editItem, in_stock: e.target.checked })}
-                        className="h-4 w-4 text-restaurant-green focus:ring-restaurant-green border-gray-300 rounded"
+                        className="h-5 w-5 text-restaurant-green focus:ring-restaurant-green border-gray-300 rounded"
                       />
-                      <label htmlFor="inStock" className="ml-2 block text-sm text-gray-700">
+                      <label htmlFor="inStock" className="ml-3 block text-sm font-medium text-gray-700">
                         In Stock
                       </label>
                     </div>
                   </div>
                 </div>
 
-                <div>
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Image URL
                     </label>
                     <input
                       type="text"
                       value={editItem.image}
                       onChange={(e) => setEditItem({ ...editItem, image: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green text-lg"
+                      placeholder="Enter image URL"
                     />
                   </div>
 
-                  <div className="mb-6">
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Image Preview
                     </label>
-                    <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
+                    <div className="aspect-video bg-gray-100 rounded-md overflow-hidden border-2 border-gray-200">
                       {editItem.image ? (
                         <img
                           src={editItem.image}
@@ -348,24 +343,24 @@ const MenuManager = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center text-sm text-gray-500">
-                    <AlertCircle size={16} className="mr-1" />
+                  <div className="flex items-center text-sm text-gray-500 bg-blue-50 p-4 rounded-md">
+                    <AlertCircle size={16} className="mr-2" />
                     For best results, use images that are at least 800x600px.
                   </div>
                 </div>
               </div>
 
-              <div className="mt-8 flex justify-end space-x-4">
+              <div className="mt-8 flex justify-end space-x-4 pt-6 border-t">
                 <button
-                  onClick={() => setEditItem(null)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  onClick={handleCloseModal}
+                  className="px-6 py-3 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-lg"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveItem}
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="px-4 py-2 bg-restaurant-green text-white rounded-md hover:bg-restaurant-green/90 disabled:opacity-50"
+                  className="px-6 py-3 bg-restaurant-green text-white rounded-md hover:bg-restaurant-green/90 disabled:opacity-50 text-lg"
                 >
                   {createMutation.isPending || updateMutation.isPending ? 'Saving...' : (isAdding ? 'Add Item' : 'Save Changes')}
                 </button>

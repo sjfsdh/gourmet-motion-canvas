@@ -35,6 +35,7 @@ export interface OrderWithItems extends DatabaseOrder {
 
 export const getAllDatabaseOrders = async (): Promise<OrderWithItems[]> => {
   try {
+    console.log('Fetching all orders from database...');
     const { data, error } = await supabase
       .from('orders')
       .select(`
@@ -54,6 +55,8 @@ export const getAllDatabaseOrders = async (): Promise<OrderWithItems[]> => {
       throw error;
     }
 
+    console.log('Fetched orders:', data?.length || 0);
+
     return (data || []).map(order => ({
       ...order,
       status: order.status as DatabaseOrder['status'],
@@ -71,6 +74,7 @@ export const getAllDatabaseOrders = async (): Promise<OrderWithItems[]> => {
 
 export const updateOrderStatus = async (orderId: number, status: DatabaseOrder['status']): Promise<DatabaseOrder> => {
   try {
+    console.log('Updating order status:', orderId, status);
     const { data, error } = await supabase
       .from('orders')
       .update({ 
@@ -113,6 +117,8 @@ export const createDatabaseOrder = async (orderData: {
   }>;
 }): Promise<DatabaseOrder> => {
   try {
+    console.log('Creating new order:', orderData);
+    
     // Create the order
     const { data: order, error: orderError } = await supabase
       .from('orders')
@@ -134,6 +140,8 @@ export const createDatabaseOrder = async (orderData: {
       throw orderError;
     }
 
+    console.log('Order created:', order);
+
     // Create order items
     const orderItems = orderData.items.map(item => ({
       order_id: order.id,
@@ -143,6 +151,8 @@ export const createDatabaseOrder = async (orderData: {
       subtotal: item.quantity * item.price
     }));
 
+    console.log('Creating order items:', orderItems);
+
     const { error: itemsError } = await supabase
       .from('order_items')
       .insert(orderItems);
@@ -151,6 +161,8 @@ export const createDatabaseOrder = async (orderData: {
       console.error('Error creating order items:', itemsError);
       throw itemsError;
     }
+
+    console.log('Order items created successfully');
 
     return {
       ...order,

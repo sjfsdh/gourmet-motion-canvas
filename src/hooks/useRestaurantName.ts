@@ -11,6 +11,7 @@ export const useRestaurantName = () => {
       try {
         const settings = await getRestaurantSettings();
         setRestaurantName(settings.restaurant_name);
+        console.log('Restaurant settings loaded:', settings.restaurant_name);
       } catch (error) {
         console.error('Error loading restaurant name:', error);
         setRestaurantName('DistinctGyrro'); // fallback
