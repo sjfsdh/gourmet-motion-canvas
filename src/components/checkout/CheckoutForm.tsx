@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, CreditCard, Truck, MapPin, User } from 'lucide-react';
+import { Check, CreditCard, Truck, MapPin, User, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/useCart';
 import { createDatabaseOrder } from '@/services/databaseOrderService';
@@ -17,6 +17,9 @@ interface CheckoutFormData {
   paymentMethod: 'card' | 'cash' | 'demo';
   deliveryMethod: 'delivery' | 'pickup';
   notes: string;
+  cardNumber: string;
+  expiryDate: string;
+  cvv: string;
 }
 
 const CheckoutForm = () => {
@@ -35,7 +38,10 @@ const CheckoutForm = () => {
     zipCode: '',
     paymentMethod: 'demo',
     deliveryMethod: 'delivery',
-    notes: ''
+    notes: '',
+    cardNumber: '',
+    expiryDate: '',
+    cvv: ''
   });
 
   const [errors, setErrors] = useState<Partial<CheckoutFormData>>({});
@@ -43,17 +49,18 @@ const CheckoutForm = () => {
   const createOrderMutation = useMutation({
     mutationFn: createDatabaseOrder,
     onSuccess: (order) => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['databaseOrders'] });
       queryClient.invalidateQueries({ queryKey: ['orderStats'] });
       setOrderId(order.id);
       setOrderPlaced(true);
       clearCart();
       toast({
         title: "Order Placed Successfully!",
-        description: `Your order #${order.id} has been confirmed.`,
+        description: `Your order #${order.id} has been confirmed and saved to the database.`,
       });
     },
     onError: (error) => {
+      console.error('Order creation error:', error);
       toast({
         title: "Error",
         description: "Failed to place order. Please try again.",
@@ -65,14 +72,31 @@ const CheckoutForm = () => {
   const validateForm = (): boolean => {
     const newErrors: Partial<CheckoutFormData> = {};
 
+    // Basic validation
     if (!formData.customerName.trim()) newErrors.customerName = 'Name is required';
     if (!formData.customerEmail.trim()) newErrors.customerEmail = 'Email is required';
     if (!formData.customerPhone.trim()) newErrors.customerPhone = 'Phone is required';
     
+    // Delivery validation
     if (formData.deliveryMethod === 'delivery') {
       if (!formData.address.trim()) newErrors.address = 'Address is required for delivery';
       if (!formData.city.trim()) newErrors.city = 'City is required for delivery';
       if (!formData.zipCode.trim()) newErrors.zipCode = 'ZIP code is required for delivery';
+    }
+
+    // Payment validation
+    if (formData.paymentMethod === 'card') {
+      if (!formData.cardNumber.trim()) newErrors.cardNumber = 'Card number is required';
+      if (!formData.expiryDate.trim()) newErrors.expiryDate = 'Expiry date is required';
+      if (!formData.cvv.trim()) newErrors.cvv = 'CVV is required';
+      
+      // Demo card validation
+      if (formData.cardNumber === '4242424242424242' || formData.cardNumber === '4242 4242 4242 4242') {
+        // Valid demo card - clear any card errors
+        delete newErrors.cardNumber;
+      } else if (formData.cardNumber.length > 0) {
+        newErrors.cardNumber = 'For demo, use: 4242 4242 4242 4242';
+      }
     }
 
     // Email validation
@@ -142,6 +166,7 @@ const CheckoutForm = () => {
       }))
     };
 
+    console.log('Creating order with data:', orderData);
     createOrderMutation.mutate(orderData);
   };
 
@@ -158,7 +183,7 @@ const CheckoutForm = () => {
           </div>
           <h2 className="text-2xl font-bold mb-4">Order Confirmed!</h2>
           <p className="text-gray-600 mb-4">
-            Thank you for your order. Your order #{orderId} has been successfully placed.
+            Thank you for your order. Your order #{orderId} has been successfully placed and saved to our system.
           </p>
           <p className="text-gray-600 mb-6">
             Estimated {formData.deliveryMethod === 'delivery' ? 'delivery' : 'pickup'} time: 
@@ -336,7 +361,7 @@ const CheckoutForm = () => {
               Payment Method
             </h2>
             
-            <div className="space-y-3">
+            <div className="space-y-3 mb-4">
               <label className={`cursor-pointer p-4 border-2 rounded-lg flex items-center ${formData.paymentMethod === 'demo' ? 'border-restaurant-green bg-restaurant-green/5' : 'border-gray-200'}`}>
                 <input
                   type="radio"
@@ -349,6 +374,21 @@ const CheckoutForm = () => {
                 <div>
                   <div className="font-medium">Demo Payment (Testing)</div>
                   <div className="text-sm text-gray-500">Use this for testing - no real payment required</div>
+                </div>
+              </label>
+              
+              <label className={`cursor-pointer p-4 border-2 rounded-lg flex items-center ${formData.paymentMethod === 'card' ? 'border-restaurant-green bg-restaurant-green/5' : 'border-gray-200'}`}>
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="card"
+                  checked={formData.paymentMethod === 'card'}
+                  onChange={(e) => handleInputChange('paymentMethod', e.target.value)}
+                  className="mr-3"
+                />
+                <div>
+                  <div className="font-medium">Credit Card (Demo)</div>
+                  <div className="text-sm text-gray-500">Use demo card: 4242 4242 4242 4242</div>
                 </div>
               </label>
               
@@ -367,6 +407,60 @@ const CheckoutForm = () => {
                 </div>
               </label>
             </div>
+
+            {formData.paymentMethod === 'card' && (
+              <div className="space-y-4">
+                <div className="bg-blue-50 p-3 rounded-md">
+                  <div className="flex items-center text-blue-800 text-sm">
+                    <AlertTriangle size={16} className="mr-2" />
+                    Demo Card Details: 4242 4242 4242 4242 | 12/28 | 123
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Card Number *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.cardNumber}
+                      onChange={(e) => handleInputChange('cardNumber', e.target.value)}
+                      className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.cardNumber ? 'border-red-500' : 'border-gray-300'}`}
+                      placeholder="4242 4242 4242 4242"
+                    />
+                    {errors.cardNumber && <p className="text-red-500 text-sm mt-1">{errors.cardNumber}</p>}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Expiry *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.expiryDate}
+                      onChange={(e) => handleInputChange('expiryDate', e.target.value)}
+                      className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.expiryDate ? 'border-red-500' : 'border-gray-300'}`}
+                      placeholder="12/28"
+                    />
+                    {errors.expiryDate && <p className="text-red-500 text-sm mt-1">{errors.expiryDate}</p>}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      CVV *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.cvv}
+                      onChange={(e) => handleInputChange('cvv', e.target.value)}
+                      className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.cvv ? 'border-red-500' : 'border-gray-300'}`}
+                      placeholder="123"
+                    />
+                    {errors.cvv && <p className="text-red-500 text-sm mt-1">{errors.cvv}</p>}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

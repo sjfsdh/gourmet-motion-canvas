@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Save, Settings, AlertCircle } from 'lucide-react';
+import { Save, Settings, AlertCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getRestaurantSettings, updateRestaurantSettings, RestaurantSettings } from '@/services/settingsService';
@@ -44,19 +43,53 @@ const AdminSettings = () => {
       updateRestaurantSettings(settings.id, updatedSettings),
     onSuccess: (updatedSettings) => {
       queryClient.invalidateQueries({ queryKey: ['restaurantSettings'] });
+      // Clear all React Query cache to force updates across the entire app
+      queryClient.clear();
       // Trigger custom event to update components across the app
       window.dispatchEvent(new CustomEvent('settingsUpdated', { 
         detail: updatedSettings 
       }));
+      // Force page reload to ensure all components get updated settings
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
       toast({
         title: "Settings Updated",
-        description: "Restaurant settings have been updated successfully",
+        description: "Restaurant settings have been updated successfully. Page will refresh to apply changes.",
       });
     },
     onError: (error) => {
       toast({
         title: "Error",
         description: "Failed to update settings. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Mutation for clearing demo data
+  const clearDataMutation = useMutation({
+    mutationFn: async () => {
+      const { supabase } = await import('@/integrations/supabase/client');
+      
+      // Clear orders and order items
+      await supabase.from('order_items').delete().neq('id', 0);
+      await supabase.from('orders').delete().neq('id', 0);
+      
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['databaseOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['orderStats'] });
+      toast({
+        title: "Data Cleared",
+        description: "All demo data has been removed from the database.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to clear demo data.",
         variant: "destructive"
       });
     }
@@ -71,6 +104,12 @@ const AdminSettings = () => {
 
   const handleSave = () => {
     updateMutation.mutate(settings);
+  };
+
+  const handleClearData = () => {
+    if (confirm('Are you sure you want to clear all orders and demo data? This action cannot be undone.')) {
+      clearDataMutation.mutate();
+    }
   };
 
   if (isLoading) {
@@ -93,20 +132,31 @@ const AdminSettings = () => {
           </h1>
           <p className="text-gray-500">Manage your restaurant information and settings</p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleSave}
-          disabled={updateMutation.isPending}
-          className="bg-restaurant-green text-white px-6 py-2 rounded-lg flex items-center disabled:opacity-50"
-        >
-          <Save size={20} className="mr-2" />
-          {updateMutation.isPending ? 'Saving...' : 'Save Settings'}
-        </motion.button>
+        <div className="flex gap-3">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleClearData}
+            disabled={clearDataMutation.isPending}
+            className="bg-red-500 text-white px-4 py-2 rounded-lg flex items-center disabled:opacity-50"
+          >
+            <Trash2 size={16} className="mr-2" />
+            Clear Demo Data
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleSave}
+            disabled={updateMutation.isPending}
+            className="bg-restaurant-green text-white px-6 py-2 rounded-lg flex items-center disabled:opacity-50"
+          >
+            <Save size={20} className="mr-2" />
+            {updateMutation.isPending ? 'Saving...' : 'Save Settings'}
+          </motion.button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Basic Information */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold mb-6">Basic Information</h2>
           
@@ -167,7 +217,6 @@ const AdminSettings = () => {
           </div>
         </div>
 
-        {/* Operating Hours */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold mb-6">Operating Hours</h2>
           
@@ -190,7 +239,6 @@ const AdminSettings = () => {
         </div>
       </div>
 
-      {/* Update confirmation */}
       {updateMutation.isSuccess && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -199,7 +247,7 @@ const AdminSettings = () => {
         >
           <div className="flex items-center text-green-800">
             <Settings className="mr-2" size={20} />
-            Settings have been updated successfully! Changes will be reflected across the site.
+            Settings have been updated successfully! Page will refresh to apply changes across the site.
           </div>
         </motion.div>
       )}

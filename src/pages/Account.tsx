@@ -1,29 +1,173 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, MapPin, Phone, Mail, Package, Eye, Calendar, CreditCard } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { getUserOrders, Order } from '@/services/orderService';
-import ViewDetailsModal from '@/components/modals/ViewDetailsModal';
-import { CustomButton } from '@/components/ui/custom-button';
-import AnimatedSection from '@/components/animations/AnimatedSection';
+import { User, Phone, MapPin, Save, Eye, EyeOff, Clock } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
+import { getAllDatabaseOrders } from '@/services/databaseOrderService';
 
 const Account = () => {
-  const { user } = useAuth();
-  const [userOrders, setUserOrders] = useState<Order[]>([]);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('profile');
+  const { toast } = useToast();
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const [profileData, setProfileData] = useState({
+    name: 'John Doe',
+    email: 'john.doe@example.com',
+    phone: '+1 (555) 123-4567',
+    address: '123 Main Street',
+    city: 'New York',
+    zipCode: '10001',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+
+  const [errors, setErrors] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    zipCode: '',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+
+  // Fetch user orders
+  const { data: allOrders = [] } = useQuery({
+    queryKey: ['userOrders'],
+    queryFn: getAllDatabaseOrders
+  });
+
+  // Filter orders for current user (in a real app, you'd filter by user ID)
+  const userOrders = allOrders.filter(order => 
+    order.customer_email === profileData.email
+  );
 
   useEffect(() => {
-    if (user?.id) {
-      const orders = getUserOrders(user.id);
-      setUserOrders(orders);
+    // Load saved profile data
+    const savedProfile = localStorage.getItem('userProfile');
+    if (savedProfile) {
+      const parsed = JSON.parse(savedProfile);
+      setProfileData(prev => ({ ...prev, ...parsed }));
     }
-  }, [user]);
+  }, []);
 
-  const handleViewOrder = (order: Order) => {
-    setSelectedOrder(order);
-    setIsModalOpen(true);
+  const handleInputChange = (field: string, value: string) => {
+    setProfileData(prev => ({ ...prev, [field]: value }));
+    setErrors(prev => ({ ...prev, [field]: '' }));
+  };
+
+  const validateForm = () => {
+    const newErrors = { ...errors };
+    let isValid = true;
+
+    if (!profileData.name.trim()) {
+      newErrors.name = 'Name is required';
+      isValid = false;
+    }
+
+    if (!profileData.email.trim()) {
+      newErrors.email = 'Email is required';
+      isValid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileData.email)) {
+      newErrors.email = 'Please enter a valid email address';
+      isValid = false;
+    }
+
+    if (!profileData.phone.trim()) {
+      newErrors.phone = 'Phone number is required';
+      isValid = false;
+    }
+
+    if (!profileData.address.trim()) {
+      newErrors.address = 'Address is required';
+      isValid = false;
+    }
+
+    if (!profileData.city.trim()) {
+      newErrors.city = 'City is required';
+      isValid = false;
+    }
+
+    if (!profileData.zipCode.trim()) {
+      newErrors.zipCode = 'ZIP code is required';
+      isValid = false;
+    }
+
+    if (profileData.newPassword) {
+      if (profileData.newPassword.length < 6) {
+        newErrors.newPassword = 'New password must be at least 6 characters';
+        isValid = false;
+      }
+
+      if (profileData.newPassword !== profileData.confirmPassword) {
+        newErrors.confirmPassword = 'Passwords do not match';
+        isValid = false;
+      }
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
+  const handleSaveProfile = async () => {
+    if (!validateForm()) {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the errors below",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Save to localStorage
+      const profileToSave = {
+        name: profileData.name,
+        email: profileData.email,
+        phone: profileData.phone,
+        address: profileData.address,
+        city: profileData.city,
+        zipCode: profileData.zipCode,
+        lastUpdated: new Date().toISOString()
+      };
+
+      localStorage.setItem('userProfile', JSON.stringify(profileToSave));
+
+      if (profileData.newPassword) {
+        localStorage.setItem('userPassword', profileData.newPassword);
+      }
+
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been updated successfully.",
+      });
+
+      // Clear password fields
+      setProfileData(prev => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      }));
+
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -33,264 +177,234 @@ const Account = () => {
       case 'preparing':
         return 'bg-blue-100 text-blue-800';
       case 'ready':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'pending':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-purple-100 text-purple-800';
       case 'cancelled':
         return 'bg-red-100 text-red-800';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-yellow-100 text-yellow-800';
     }
   };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
-
-  const totalSpent = userOrders.reduce((sum, order) => sum + order.total, 0);
-
-  // Get user display name from user_metadata or fallback to email
-  const getUserDisplayName = () => {
-    if (user?.user_metadata?.full_name) {
-      return user.user_metadata.full_name;
-    }
-    if (user?.user_metadata?.name) {
-      return user.user_metadata.name;
-    }
-    return user?.email || 'User';
-  };
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Please log in</h2>
-          <p className="text-gray-600">You need to be logged in to view your account.</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="bg-gray-50 min-h-screen py-12">
-      <div className="container-custom">
-        <AnimatedSection animation="fadeIn">
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-restaurant-green to-blue-600 px-6 py-8 text-white">
-              <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-                  <User size={32} />
-                </div>
+    <div className="bg-gray-50 min-h-screen">
+      <div className="container-custom py-12">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-3xl font-bold mb-8">My Account</h1>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Profile Information */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold mb-6 flex items-center">
+                <User className="mr-2" size={20} />
+                Profile Information
+              </h2>
+              
+              <div className="space-y-4">
                 <div>
-                  <h1 className="text-2xl font-bold">{getUserDisplayName()}</h1>
-                  <p className="opacity-90">{user.email}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={profileData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${
+                      errors.name ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="Enter your full name"
+                  />
+                  {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={profileData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${
+                      errors.email ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="Enter your email"
+                  />
+                  {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Phone className="inline mr-1" size={16} />
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    value={profileData.phone}
+                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                    className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${
+                      errors.phone ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="Enter your phone number"
+                  />
+                  {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
                 </div>
               </div>
             </div>
 
-            {/* Navigation */}
-            <div className="border-b border-gray-200">
-              <nav className="flex space-x-8 px-6">
-                <button
-                  onClick={() => setActiveTab('profile')}
-                  className={`py-4 border-b-2 transition-colors ${
-                    activeTab === 'profile'
-                      ? 'border-restaurant-green text-restaurant-green'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  Profile
-                </button>
-                <button
-                  onClick={() => setActiveTab('orders')}
-                  className={`py-4 border-b-2 transition-colors ${
-                    activeTab === 'orders'
-                      ? 'border-restaurant-green text-restaurant-green'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  My Orders ({userOrders.length})
-                </button>
-              </nav>
+            {/* Address Information */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold mb-6 flex items-center">
+                <MapPin className="mr-2" size={20} />
+                Address Information
+              </h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Street Address
+                  </label>
+                  <input
+                    type="text"
+                    value={profileData.address}
+                    onChange={(e) => handleInputChange('address', e.target.value)}
+                    className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${
+                      errors.address ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="Enter your address"
+                  />
+                  {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      City
+                    </label>
+                    <input
+                      type="text"
+                      value={profileData.city}
+                      onChange={(e) => handleInputChange('city', e.target.value)}
+                      className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${
+                        errors.city ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder="City"
+                    />
+                    {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      ZIP Code
+                    </label>
+                    <input
+                      type="text"
+                      value={profileData.zipCode}
+                      onChange={(e) => handleInputChange('zipCode', e.target.value)}
+                      className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${
+                        errors.zipCode ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder="ZIP"
+                    />
+                    {errors.zipCode && <p className="text-red-500 text-sm mt-1">{errors.zipCode}</p>}
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Content */}
-            <div className="p-6">
-              {activeTab === 'profile' && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-6"
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-6">
-                      <h2 className="text-xl font-semibold">Personal Information</h2>
-                      
-                      <div className="space-y-4">
-                        <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
-                          <User size={20} className="text-gray-500" />
-                          <div>
-                            <p className="font-medium">Full Name</p>
-                            <p className="text-gray-600">{getUserDisplayName()}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
-                          <Mail size={20} className="text-gray-500" />
-                          <div>
-                            <p className="font-medium">Email Address</p>
-                            <p className="text-gray-600">{user.email}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
-                          <Phone size={20} className="text-gray-500" />
-                          <div>
-                            <p className="font-medium">Phone Number</p>
-                            <p className="text-gray-600">Not provided</p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
-                          <MapPin size={20} className="text-gray-500" />
-                          <div>
-                            <p className="font-medium">Address</p>
-                            <p className="text-gray-600">Not provided</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-6">
-                      <h2 className="text-xl font-semibold">Account Statistics</h2>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-lg">
-                          <Package size={24} className="mb-2" />
-                          <p className="text-2xl font-bold">{userOrders.length}</p>
-                          <p className="text-blue-100">Total Orders</p>
-                        </div>
-                        
-                        <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg">
-                          <CreditCard size={24} className="mb-2" />
-                          <p className="text-2xl font-bold">{formatCurrency(totalSpent)}</p>
-                          <p className="text-green-100">Total Spent</p>
-                        </div>
-                      </div>
-
-                      <div className="bg-gray-50 p-6 rounded-lg">
-                        <h3 className="font-semibold mb-3">Membership Since</h3>
-                        <div className="flex items-center space-x-2 text-gray-600">
-                          <Calendar size={16} />
-                          <span>January 2025</span>
-                        </div>
-                      </div>
-                    </div>
+            {/* Security Settings */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold mb-6">Change Password</h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    New Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={profileData.newPassword}
+                      onChange={(e) => handleInputChange('newPassword', e.target.value)}
+                      className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green pr-10 ${
+                        errors.newPassword ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder="Enter new password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                   </div>
-                </motion.div>
-              )}
+                  {errors.newPassword && <p className="text-red-500 text-sm mt-1">{errors.newPassword}</p>}
+                </div>
 
-              {activeTab === 'orders' && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-6"
-                >
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-semibold">Order History</h2>
-                    {userOrders.length > 0 && (
-                      <p className="text-gray-600">
-                        Total: {formatCurrency(totalSpent)} from {userOrders.length} orders
-                      </p>
-                    )}
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Confirm New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={profileData.confirmPassword}
+                    onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                    className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${
+                      errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="Confirm new password"
+                  />
+                  {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
+                </div>
+              </div>
+            </div>
 
-                  {userOrders.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Package size={64} className="mx-auto text-gray-300 mb-4" />
-                      <h3 className="text-xl font-semibold text-gray-700 mb-2">No orders yet</h3>
-                      <p className="text-gray-500 mb-6">
-                        You haven't placed any orders yet. Start by browsing our delicious menu!
-                      </p>
-                      <CustomButton
-                        onClick={() => window.location.href = '/menu'}
-                      >
-                        Browse Menu
-                      </CustomButton>
+            {/* Order History */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold mb-6 flex items-center">
+                <Clock className="mr-2" size={20} />
+                Order History
+              </h2>
+              
+              <div className="space-y-4">
+                {userOrders.length === 0 ? (
+                  <p className="text-gray-500 text-center py-4">No orders found</p>
+                ) : (
+                  userOrders.slice(0, 5).map((order) => (
+                    <div key={order.id} className="border rounded-md p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-medium">Order #{order.id}</span>
+                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(order.status)}`}>
+                          {order.status}
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        <p>Date: {new Date(order.created_at).toLocaleDateString()}</p>
+                        <p>Total: ${Number(order.total).toFixed(2)}</p>
+                        <p>Items: {order.items.length} item(s)</p>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {userOrders.map((order) => (
-                        <motion.div
-                          key={order.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
-                        >
-                          <div className="flex justify-between items-start mb-4">
-                            <div>
-                              <h3 className="text-lg font-semibold">Order #{order.id.slice(-8)}</h3>
-                              <p className="text-gray-600">
-                                {new Date(order.created_at).toLocaleDateString()} at{' '}
-                                {new Date(order.created_at).toLocaleTimeString()}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-xl font-bold text-restaurant-green">
-                                {formatCurrency(order.total)}
-                              </p>
-                              <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(order.status)}`}>
-                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap gap-2 mb-4">
-                            {order.items.slice(0, 3).map((item, index) => (
-                              <div key={index} className="flex items-center space-x-2 bg-gray-50 px-3 py-1 rounded-full">
-                                <span className="text-sm">{item.name}</span>
-                                <span className="text-xs text-gray-500">×{item.quantity}</span>
-                              </div>
-                            ))}
-                            {order.items.length > 3 && (
-                              <div className="bg-gray-100 px-3 py-1 rounded-full text-sm text-gray-600">
-                                +{order.items.length - 3} more
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex justify-end">
-                            <CustomButton
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleViewOrder(order)}
-                              icon={<Eye size={16} />}
-                            >
-                              View Details
-                            </CustomButton>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </motion.div>
-              )}
+                  ))
+                )}
+              </div>
             </div>
           </div>
-        </AnimatedSection>
-      </div>
 
-      {/* View Details Modal */}
-      <ViewDetailsModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        order={selectedOrder}
-        type="order"
-      />
+          {/* Save Button */}
+          <div className="mt-8 flex justify-end">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleSaveProfile}
+              disabled={isLoading}
+              className="bg-restaurant-green text-white px-8 py-3 rounded-lg flex items-center disabled:opacity-50"
+            >
+              <Save size={20} className="mr-2" />
+              {isLoading ? 'Saving...' : 'Save Changes'}
+            </motion.button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
