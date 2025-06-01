@@ -104,6 +104,14 @@ const MenuManager = () => {
     }
   });
 
+  const handleToggleStock = (item: any) => {
+    toggleStockMutation.mutate({ id: item.id, in_stock: !item.in_stock });
+  };
+
+  const handleToggleFeatured = (item: any) => {
+    toggleFeaturedMutation.mutate({ id: item.id, featured: !item.featured });
+  };
+
   const handleAddItem = () => {
     setIsAdding(true);
     setEditItem({

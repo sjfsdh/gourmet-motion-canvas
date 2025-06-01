@@ -54,7 +54,19 @@ const Index = () => {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <HeroBanner />
+      <HeroBanner
+        title={`Welcome to ${restaurantName}`}
+        subtitle="Experience the authentic taste of the Mediterranean with our freshly prepared gyros, kebabs, and traditional dishes"
+        backgroundImage="https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?ixlib=rb-4.0.3"
+        primaryCta={{
+          text: "Order Now",
+          link: "/menu"
+        }}
+        secondaryCta={{
+          text: "View Menu",
+          link: "/menu"
+        }}
+      />
 
       {/* Features Section */}
       <section className="py-16 bg-gray-50">
@@ -76,7 +88,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Featured Items Section - Fixed Layout */}
+      {/* Featured Items Section */}
       <section className="py-16 bg-white">
         <div className="container-custom px-4 sm:px-6 lg:px-8">
           <SectionTitle 
