@@ -11,7 +11,7 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { itemCount } = useCart();
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { settings } = useRestaurantSettings();
@@ -26,7 +26,7 @@ const Header = () => {
   }, []);
 
   const handleLogout = () => {
-    logout();
+    signOut();
     navigate('/');
   };
 
