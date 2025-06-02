@@ -1,17 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { ShoppingCart, Menu, X, User, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, ShoppingCart, User, Settings } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
-import { useRestaurantName } from '@/hooks/useRestaurantName';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRestaurantSettings } from '@/services/settingsService';
 
 const Header = () => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { itemCount } = useCart();
-  const { restaurantName } = useRestaurantName();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
+  const { settings } = useRestaurantSettings();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -22,14 +25,25 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
   const navItems = [
-    { name: 'Home', href: '/' },
-    { name: 'Menu', href: '/menu' },
-    { name: 'About', href: '/about' },
-    { name: 'Contact', href: '/contact' },
+    { name: 'Home', path: '/' },
+    { name: 'Menu', path: '/menu' },
+    { name: 'About', path: '/about' },
+    { name: 'Contact', path: '/contact' },
   ];
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActivePath = (path: string) => {
+    if (path === '/' && location.pathname === '/') return true;
+    if (path !== '/' && location.pathname.startsWith(path)) return true;
+    return false;
+  };
+
+  console.log('Header rendering with settings:', settings);
 
   return (
     <motion.header
@@ -38,20 +52,18 @@ const Header = () => {
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled 
           ? 'bg-white/95 backdrop-blur-md shadow-lg' 
-          : 'bg-transparent'
+          : 'bg-white/90 backdrop-blur-sm'
       }`}
     >
-      <div className="container-custom px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16 lg:h-20">
+      <div className="container-custom">
+        <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
-          <Link to="/" className="flex items-center">
+          <Link to="/" className="flex items-center space-x-2">
             <motion.div
               whileHover={{ scale: 1.05 }}
-              className={`text-2xl lg:text-3xl font-bold transition-colors duration-300 ${
-                isScrolled ? 'text-restaurant-green' : 'text-white'
-              }`}
+              className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-restaurant-green to-restaurant-terracotta bg-clip-text text-transparent"
             >
-              {restaurantName}
+              {settings.restaurant_name}
             </motion.div>
           </Link>
 
@@ -60,107 +72,152 @@ const Header = () => {
             {navItems.map((item) => (
               <Link
                 key={item.name}
-                to={item.href}
-                className={`relative transition-colors duration-300 hover:text-restaurant-terracotta ${
-                  isScrolled ? 'text-gray-700' : 'text-white'
-                } ${isActive(item.href) ? 'font-semibold' : ''}`}
+                to={item.path}
+                className={`font-medium transition-colors duration-200 hover:text-restaurant-green relative ${
+                  isActivePath(item.path) 
+                    ? 'text-restaurant-green' 
+                    : 'text-gray-700'
+                }`}
               >
                 {item.name}
-                {isActive(item.href) && (
+                {isActivePath(item.path) && (
                   <motion.div
-                    layoutId="activeNav"
-                    className="absolute -bottom-1 left-0 right-0 h-0.5 bg-restaurant-terracotta"
+                    layoutId="activeTab"
+                    className="absolute -bottom-1 left-0 right-0 h-0.5 bg-restaurant-green"
                   />
                 )}
               </Link>
             ))}
           </nav>
 
-          {/* Cart and Mobile Menu */}
+          {/* Right Side Actions */}
           <div className="flex items-center space-x-4">
-            {/* Cart Icon */}
-            <Link to="/cart">
-              <motion.div
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                className="relative"
-              >
-                <ShoppingCart 
-                  size={24} 
-                  className={`transition-colors duration-300 ${
-                    isScrolled ? 'text-gray-700' : 'text-white'
-                  }`} 
-                />
-                {itemCount > 0 && (
-                  <motion.span
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="absolute -top-2 -right-2 bg-restaurant-terracotta text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium"
-                  >
-                    {itemCount}
-                  </motion.span>
-                )}
-              </motion.div>
-            </Link>
+            {/* Auth Links */}
+            {user ? (
+              <div className="hidden lg:flex items-center space-x-4">
+                <Link
+                  to="/account"
+                  className="flex items-center space-x-1 text-gray-700 hover:text-restaurant-green transition-colors"
+                >
+                  <User size={18} />
+                  <span>Account</span>
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center space-x-1 text-gray-700 hover:text-restaurant-terracotta transition-colors"
+                >
+                  <LogOut size={18} />
+                  <span>Logout</span>
+                </button>
+              </div>
+            ) : (
+              <div className="hidden lg:flex items-center space-x-4">
+                <Link
+                  to="/auth"
+                  className="text-gray-700 hover:text-restaurant-green transition-colors font-medium"
+                >
+                  Sign In
+                </Link>
+              </div>
+            )}
 
-            {/* Admin Link */}
-            <Link to="/admin">
+            {/* Cart Icon */}
+            <Link to="/cart" className="relative">
               <motion.div
                 whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
+                whileTap={{ scale: 0.95 }}
+                className="relative p-2 text-gray-700 hover:text-restaurant-green transition-colors"
               >
-                <Settings 
-                  size={24} 
-                  className={`transition-colors duration-300 ${
-                    isScrolled ? 'text-gray-700' : 'text-white'
-                  }`} 
-                />
+                <ShoppingCart size={24} />
+                <AnimatePresence>
+                  {itemCount > 0 && (
+                    <motion.span
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      className="absolute -top-1 -right-1 bg-restaurant-terracotta text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center"
+                    >
+                      {itemCount}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </motion.div>
             </Link>
 
             {/* Mobile Menu Button */}
             <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className={`lg:hidden transition-colors duration-300 ${
-                isScrolled ? 'text-gray-700' : 'text-white'
-              }`}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="lg:hidden p-2 text-gray-700 hover:text-restaurant-green transition-colors"
             >
-              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </motion.button>
           </div>
         </div>
-      </div>
 
-      {/* Mobile Menu */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="lg:hidden bg-white/95 backdrop-blur-md border-t border-gray-200"
-          >
-            <div className="container-custom px-4 py-4">
-              <nav className="flex flex-col space-y-4">
+        {/* Mobile Navigation */}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.nav
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="lg:hidden border-t border-gray-200 bg-white/95 backdrop-blur-md"
+            >
+              <div className="py-4 space-y-3">
                 {navItems.map((item) => (
                   <Link
                     key={item.name}
-                    to={item.href}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={`text-gray-700 hover:text-restaurant-terracotta transition-colors duration-300 ${
-                      isActive(item.href) ? 'font-semibold text-restaurant-terracotta' : ''
+                    to={item.path}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={`block px-4 py-2 font-medium transition-colors ${
+                      isActivePath(item.path)
+                        ? 'text-restaurant-green bg-restaurant-green/10'
+                        : 'text-gray-700 hover:text-restaurant-green'
                     }`}
                   >
                     {item.name}
                   </Link>
                 ))}
-              </nav>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                
+                {/* Mobile Auth Links */}
+                <div className="border-t border-gray-200 pt-3">
+                  {user ? (
+                    <>
+                      <Link
+                        to="/account"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:text-restaurant-green transition-colors"
+                      >
+                        <User size={18} />
+                        <span>Account</span>
+                      </Link>
+                      <button
+                        onClick={() => {
+                          handleLogout();
+                          setIsMenuOpen(false);
+                        }}
+                        className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:text-restaurant-terracotta transition-colors w-full text-left"
+                      >
+                        <LogOut size={18} />
+                        <span>Logout</span>
+                      </button>
+                    </>
+                  ) : (
+                    <Link
+                      to="/auth"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="block px-4 py-2 text-gray-700 hover:text-restaurant-green transition-colors font-medium"
+                    >
+                      Sign In
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </motion.nav>
+          )}
+        </AnimatePresence>
+      </div>
     </motion.header>
   );
 };

@@ -49,6 +49,7 @@ const CheckoutForm = () => {
   const createOrderMutation = useMutation({
     mutationFn: createDatabaseOrder,
     onSuccess: (order) => {
+      console.log('Order created successfully:', order);
       queryClient.invalidateQueries({ queryKey: ['databaseOrders'] });
       queryClient.invalidateQueries({ queryKey: ['orderStats'] });
       setOrderId(order.id);
@@ -72,43 +73,50 @@ const CheckoutForm = () => {
   const validateForm = (): boolean => {
     const newErrors: Partial<CheckoutFormData> = {};
 
-    // Basic validation
-    if (!formData.customerName.trim()) newErrors.customerName = 'Name is required';
-    if (!formData.customerEmail.trim()) newErrors.customerEmail = 'Email is required';
-    if (!formData.customerPhone.trim()) newErrors.customerPhone = 'Phone is required';
+    // Basic validation - ALL FIELDS REQUIRED
+    if (!formData.customerName.trim()) {
+      newErrors.customerName = 'Full name is required';
+    }
     
-    // Delivery validation
-    if (formData.deliveryMethod === 'delivery') {
-      if (!formData.address.trim()) newErrors.address = 'Address is required for delivery';
-      if (!formData.city.trim()) newErrors.city = 'City is required for delivery';
-      if (!formData.zipCode.trim()) newErrors.zipCode = 'ZIP code is required for delivery';
+    if (!formData.customerEmail.trim()) {
+      newErrors.customerEmail = 'Email is required';
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.customerEmail)) {
+        newErrors.customerEmail = 'Please enter a valid email address';
+      }
+    }
+    
+    if (!formData.customerPhone.trim()) {
+      newErrors.customerPhone = 'Phone number is required';
+    }
+    
+    // Delivery validation - ALWAYS REQUIRED NOW
+    if (!formData.address.trim()) {
+      newErrors.address = 'Address is required';
+    }
+    if (!formData.city.trim()) {
+      newErrors.city = 'City is required';
+    }
+    if (!formData.zipCode.trim()) {
+      newErrors.zipCode = 'ZIP code is required';
     }
 
     // Payment validation
     if (formData.paymentMethod === 'card') {
-      if (!formData.cardNumber.trim()) newErrors.cardNumber = 'Card number is required';
-      if (!formData.expiryDate.trim()) newErrors.expiryDate = 'Expiry date is required';
-      if (!formData.cvv.trim()) newErrors.cvv = 'CVV is required';
-      
-      // Demo card validation
-      if (formData.cardNumber === '4242424242424242' || formData.cardNumber === '4242 4242 4242 4242') {
-        // Valid demo card - clear any card errors
-        delete newErrors.cardNumber;
-      } else if (formData.cardNumber.length > 0) {
+      if (!formData.cardNumber.trim()) {
+        newErrors.cardNumber = 'Card number is required';
+      } else if (formData.cardNumber.replace(/\s/g, '') !== '4242424242424242') {
         newErrors.cardNumber = 'For demo, use: 4242 4242 4242 4242';
       }
-    }
-
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (formData.customerEmail && !emailRegex.test(formData.customerEmail)) {
-      newErrors.customerEmail = 'Please enter a valid email address';
-    }
-
-    // Phone validation
-    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-    if (formData.customerPhone && !phoneRegex.test(formData.customerPhone.replace(/\s/g, ''))) {
-      newErrors.customerPhone = 'Please enter a valid phone number';
+      
+      if (!formData.expiryDate.trim()) {
+        newErrors.expiryDate = 'Expiry date is required';
+      }
+      
+      if (!formData.cvv.trim()) {
+        newErrors.cvv = 'CVV is required';
+      }
     }
 
     setErrors(newErrors);
@@ -126,6 +134,10 @@ const CheckoutForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('Form submission started');
+    console.log('Current cart:', cart);
+    console.log('Form data:', formData);
+    
     if (cart.length === 0) {
       toast({
         title: "Cart is Empty",
@@ -136,6 +148,7 @@ const CheckoutForm = () => {
     }
 
     if (!validateForm()) {
+      console.log('Form validation failed:', errors);
       toast({
         title: "Form Validation Error",
         description: "Please fill in all required fields correctly.",
@@ -156,9 +169,7 @@ const CheckoutForm = () => {
       status: 'pending' as const,
       payment_status: formData.paymentMethod === 'demo' ? 'paid' as const : 'pending' as const,
       payment_method: formData.paymentMethod,
-      address: formData.deliveryMethod === 'delivery' 
-        ? `${formData.address}, ${formData.city}, ${formData.zipCode}` 
-        : null,
+      address: `${formData.address}, ${formData.city}, ${formData.zipCode}`,
       items: cart.map(item => ({
         menu_item_id: item.id,
         quantity: item.quantity,
@@ -217,13 +228,13 @@ const CheckoutForm = () => {
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4 flex items-center">
               <User className="mr-2" />
-              Customer Information
+              Customer Information *
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name *
+                  Full Name * <span className="text-red-500">Required</span>
                 </label>
                 <input
                   type="text"
@@ -231,13 +242,14 @@ const CheckoutForm = () => {
                   onChange={(e) => handleInputChange('customerName', e.target.value)}
                   className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.customerName ? 'border-red-500' : 'border-gray-300'}`}
                   placeholder="Enter your full name"
+                  required
                 />
                 {errors.customerName && <p className="text-red-500 text-sm mt-1">{errors.customerName}</p>}
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email Address *
+                  Email Address * <span className="text-red-500">Required</span>
                 </label>
                 <input
                   type="email"
@@ -245,13 +257,14 @@ const CheckoutForm = () => {
                   onChange={(e) => handleInputChange('customerEmail', e.target.value)}
                   className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.customerEmail ? 'border-red-500' : 'border-gray-300'}`}
                   placeholder="Enter your email"
+                  required
                 />
                 {errors.customerEmail && <p className="text-red-500 text-sm mt-1">{errors.customerEmail}</p>}
               </div>
               
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone Number *
+                  Phone Number * <span className="text-red-500">Required</span>
                 </label>
                 <input
                   type="tel"
@@ -259,15 +272,16 @@ const CheckoutForm = () => {
                   onChange={(e) => handleInputChange('customerPhone', e.target.value)}
                   className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.customerPhone ? 'border-red-500' : 'border-gray-300'}`}
                   placeholder="Enter your phone number"
+                  required
                 />
                 {errors.customerPhone && <p className="text-red-500 text-sm mt-1">{errors.customerPhone}</p>}
               </div>
             </div>
           </div>
 
-          {/* Delivery Method */}
+          {/* Delivery Information - ALWAYS REQUIRED */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-4">Delivery Method</h2>
+            <h2 className="text-xl font-semibold mb-4">Delivery Information *</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <label className={`cursor-pointer p-4 border-2 rounded-lg ${formData.deliveryMethod === 'delivery' ? 'border-restaurant-green bg-restaurant-green/5' : 'border-gray-200'}`}>
@@ -307,58 +321,59 @@ const CheckoutForm = () => {
               </label>
             </div>
 
-            {formData.deliveryMethod === 'delivery' && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Address *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.address}
-                    onChange={(e) => handleInputChange('address', e.target.value)}
-                    className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.address ? 'border-red-500' : 'border-gray-300'}`}
-                    placeholder="Street address"
-                  />
-                  {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    City *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.city}
-                    onChange={(e) => handleInputChange('city', e.target.value)}
-                    className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.city ? 'border-red-500' : 'border-gray-300'}`}
-                    placeholder="City"
-                  />
-                  {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city}</p>}
-                </div>
-                
-                <div className="md:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ZIP Code *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.zipCode}
-                    onChange={(e) => handleInputChange('zipCode', e.target.value)}
-                    className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.zipCode ? 'border-red-500' : 'border-gray-300'}`}
-                    placeholder="ZIP"
-                  />
-                  {errors.zipCode && <p className="text-red-500 text-sm mt-1">{errors.zipCode}</p>}
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Address * <span className="text-red-500">Required</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.address}
+                  onChange={(e) => handleInputChange('address', e.target.value)}
+                  className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.address ? 'border-red-500' : 'border-gray-300'}`}
+                  placeholder="Street address"
+                  required
+                />
+                {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
               </div>
-            )}
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  City * <span className="text-red-500">Required</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.city}
+                  onChange={(e) => handleInputChange('city', e.target.value)}
+                  className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.city ? 'border-red-500' : 'border-gray-300'}`}
+                  placeholder="City"
+                  required
+                />
+                {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city}</p>}
+              </div>
+              
+              <div className="md:col-span-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  ZIP Code * <span className="text-red-500">Required</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.zipCode}
+                  onChange={(e) => handleInputChange('zipCode', e.target.value)}
+                  className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.zipCode ? 'border-red-500' : 'border-gray-300'}`}
+                  placeholder="ZIP"
+                  required
+                />
+                {errors.zipCode && <p className="text-red-500 text-sm mt-1">{errors.zipCode}</p>}
+              </div>
+            </div>
           </div>
 
           {/* Payment Method */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4 flex items-center">
               <CreditCard className="mr-2" />
-              Payment Method
+              Payment Method *
             </h2>
             
             <div className="space-y-3 mb-4">
@@ -372,7 +387,7 @@ const CheckoutForm = () => {
                   className="mr-3"
                 />
                 <div>
-                  <div className="font-medium">Demo Payment (Testing)</div>
+                  <div className="font-medium">Demo Payment (Testing) - RECOMMENDED</div>
                   <div className="text-sm text-gray-500">Use this for testing - no real payment required</div>
                 </div>
               </label>
@@ -410,10 +425,15 @@ const CheckoutForm = () => {
 
             {formData.paymentMethod === 'card' && (
               <div className="space-y-4">
-                <div className="bg-blue-50 p-3 rounded-md">
-                  <div className="flex items-center text-blue-800 text-sm">
+                <div className="bg-blue-50 p-4 rounded-md border border-blue-200">
+                  <div className="flex items-center text-blue-800 text-sm font-medium">
                     <AlertTriangle size={16} className="mr-2" />
-                    Demo Card Details: 4242 4242 4242 4242 | 12/28 | 123
+                    Demo Card Details for Testing:
+                  </div>
+                  <div className="mt-2 text-blue-700 text-sm">
+                    <strong>Card Number:</strong> 4242 4242 4242 4242<br/>
+                    <strong>Expiry:</strong> 12/28<br/>
+                    <strong>CVV:</strong> 123
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -502,10 +522,15 @@ const CheckoutForm = () => {
             <button
               type="submit"
               disabled={createOrderMutation.isPending || cart.length === 0}
-              className="w-full bg-restaurant-green text-white py-3 rounded-lg mt-6 hover:bg-restaurant-green/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-restaurant-green text-white py-3 rounded-lg mt-6 hover:bg-restaurant-green/90 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
             >
               {createOrderMutation.isPending ? 'Placing Order...' : `Place Order - $${total.toFixed(2)}`}
             </button>
+            
+            <div className="mt-4 text-xs text-gray-500 text-center">
+              <p>Demo Payment: Use "Demo Payment" option for testing</p>
+              <p>Demo Card: 4242 4242 4242 4242 | 12/28 | 123</p>
+            </div>
           </div>
         </div>
       </form>

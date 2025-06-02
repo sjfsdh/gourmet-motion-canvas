@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Save, Settings, AlertCircle, Trash2 } from 'lucide-react';
+import { Save, Settings, AlertCircle, Trash2, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getRestaurantSettings, updateRestaurantSettings, RestaurantSettings } from '@/services/settingsService';
@@ -33,6 +34,7 @@ const AdminSettings = () => {
   // Update local state when settings are loaded
   useEffect(() => {
     if (currentSettings) {
+      console.log('AdminSettings: Loading current settings:', currentSettings);
       setSettings(currentSettings);
     }
   }, [currentSettings]);
@@ -42,23 +44,28 @@ const AdminSettings = () => {
     mutationFn: (updatedSettings: Partial<RestaurantSettings>) => 
       updateRestaurantSettings(settings.id, updatedSettings),
     onSuccess: (updatedSettings) => {
-      queryClient.invalidateQueries({ queryKey: ['restaurantSettings'] });
-      // Clear all React Query cache to force updates across the entire app
+      console.log('AdminSettings: Settings updated successfully:', updatedSettings);
+      
+      // Clear all caches
       queryClient.clear();
+      
       // Trigger custom event to update components across the app
       window.dispatchEvent(new CustomEvent('settingsUpdated', { 
         detail: updatedSettings 
       }));
-      // Force page reload to ensure all components get updated settings
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      
+      // Force reload after a short delay to ensure all components update
       toast({
         title: "Settings Updated",
-        description: "Restaurant settings have been updated successfully. Page will refresh to apply changes.",
+        description: "Restaurant settings have been updated successfully. The page will refresh to apply changes.",
       });
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     },
     onError: (error) => {
+      console.error('AdminSettings: Error updating settings:', error);
       toast({
         title: "Error",
         description: "Failed to update settings. Please try again.",
@@ -70,23 +77,35 @@ const AdminSettings = () => {
   // Mutation for clearing demo data
   const clearDataMutation = useMutation({
     mutationFn: async () => {
+      console.log('Clearing demo data...');
       const { supabase } = await import('@/integrations/supabase/client');
       
       // Clear orders and order items
       await supabase.from('order_items').delete().neq('id', 0);
       await supabase.from('orders').delete().neq('id', 0);
       
+      // Clear localStorage
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (key.includes('order') || key.includes('cart') || key.includes('demo')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      console.log('Demo data cleared');
       return true;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['databaseOrders'] });
       queryClient.invalidateQueries({ queryKey: ['orderStats'] });
+      queryClient.clear();
       toast({
         title: "Data Cleared",
-        description: "All demo data has been removed from the database.",
+        description: "All demo data has been removed from the database and local storage.",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Error clearing demo data:', error);
       toast({
         title: "Error",
         description: "Failed to clear demo data.",
@@ -96,6 +115,7 @@ const AdminSettings = () => {
   });
 
   const handleInputChange = (field: keyof RestaurantSettings, value: string) => {
+    console.log('AdminSettings: Input changed:', field, value);
     setSettings(prev => ({
       ...prev,
       [field]: value
@@ -103,6 +123,7 @@ const AdminSettings = () => {
   };
 
   const handleSave = () => {
+    console.log('AdminSettings: Saving settings:', settings);
     updateMutation.mutate(settings);
   };
 
@@ -110,6 +131,12 @@ const AdminSettings = () => {
     if (confirm('Are you sure you want to clear all orders and demo data? This action cannot be undone.')) {
       clearDataMutation.mutate();
     }
+  };
+
+  const handleForceRefresh = () => {
+    queryClient.clear();
+    localStorage.clear();
+    window.location.reload();
   };
 
   if (isLoading) {
@@ -133,6 +160,15 @@ const AdminSettings = () => {
           <p className="text-gray-500">Manage your restaurant information and settings</p>
         </div>
         <div className="flex gap-3">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleForceRefresh}
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center"
+          >
+            <RefreshCw size={16} className="mr-2" />
+            Force Refresh
+          </motion.button>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -163,7 +199,7 @@ const AdminSettings = () => {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Restaurant Name
+                Restaurant Name *
               </label>
               <input
                 type="text"
@@ -171,12 +207,13 @@ const AdminSettings = () => {
                 onChange={(e) => handleInputChange('restaurant_name', e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
                 placeholder="Enter restaurant name"
+                required
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Address
+                Address *
               </label>
               <textarea
                 rows={3}
@@ -184,13 +221,14 @@ const AdminSettings = () => {
                 onChange={(e) => handleInputChange('restaurant_address', e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
                 placeholder="Enter restaurant address"
+                required
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number
+                  Phone Number *
                 </label>
                 <input
                   type="tel"
@@ -198,12 +236,13 @@ const AdminSettings = () => {
                   onChange={(e) => handleInputChange('restaurant_phone', e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
                   placeholder="Enter phone number"
+                  required
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address
+                  Email Address *
                 </label>
                 <input
                   type="email"
@@ -211,6 +250,7 @@ const AdminSettings = () => {
                   onChange={(e) => handleInputChange('restaurant_email', e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
                   placeholder="Enter email address"
+                  required
                 />
               </div>
             </div>
@@ -222,7 +262,7 @@ const AdminSettings = () => {
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Opening Hours
+              Opening Hours *
             </label>
             <textarea
               rows={6}
@@ -230,6 +270,7 @@ const AdminSettings = () => {
               onChange={(e) => handleInputChange('opening_hours', e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
               placeholder="Monday - Friday: 8:00 AM - 10:00 PM&#10;Saturday: 9:00 AM - 11:00 PM&#10;Sunday: 10:00 AM - 9:00 PM"
+              required
             />
             <div className="flex items-center mt-2 text-sm text-gray-500">
               <AlertCircle size={16} className="mr-2" />
@@ -239,6 +280,7 @@ const AdminSettings = () => {
         </div>
       </div>
 
+      {/* Status Messages */}
       {updateMutation.isSuccess && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -251,6 +293,35 @@ const AdminSettings = () => {
           </div>
         </motion.div>
       )}
+
+      {clearDataMutation.isSuccess && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md"
+        >
+          <div className="flex items-center text-blue-800">
+            <Trash2 className="mr-2" size={20} />
+            Demo data has been cleared successfully!
+          </div>
+        </motion.div>
+      )}
+
+      {/* Current Settings Display */}
+      <div className="mt-8 bg-gray-50 rounded-lg p-6">
+        <h3 className="text-lg font-semibold mb-4">Current Settings Preview</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <strong>Restaurant Name:</strong> {settings.restaurant_name}
+          </div>
+          <div>
+            <strong>Phone:</strong> {settings.restaurant_phone}
+          </div>
+          <div className="md:col-span-2">
+            <strong>Address:</strong> {settings.restaurant_address}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

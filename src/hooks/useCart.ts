@@ -19,18 +19,11 @@ export const useCart = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   
-  // Generate a unique cart ID for the current browser session using MAC/IP simulation
+  // Generate a unique cart ID for the current browser session
   const getCartId = () => {
     let cartId = localStorage.getItem('cartId');
     if (!cartId) {
-      // Simulate MAC address based approach using browser fingerprint
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      ctx!.textBaseline = 'top';
-      ctx!.font = '14px Arial';
-      ctx!.fillText('Browser fingerprint', 2, 2);
-      const fingerprint = canvas.toDataURL();
-      cartId = `cart_${btoa(fingerprint).slice(0, 12)}`;
+      cartId = `cart_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       localStorage.setItem('cartId', cartId);
     }
     return cartId;
@@ -46,21 +39,23 @@ export const useCart = () => {
     try {
       const cartKey = getCartStorageKey();
       const savedCart = localStorage.getItem(cartKey);
+      console.log('Loading cart from localStorage:', cartKey, savedCart);
+      
       if (savedCart) {
         const parsedCart = JSON.parse(savedCart);
-        // Ensure we only load valid cart items
         if (Array.isArray(parsedCart)) {
           setCart(parsedCart);
+          console.log('Cart loaded:', parsedCart);
         } else {
+          console.log('Invalid cart data, resetting cart');
           setCart([]);
         }
       } else {
-        // For new users, ensure cart is empty
+        console.log('No saved cart found, starting with empty cart');
         setCart([]);
       }
     } catch (error) {
       console.error('Error parsing cart from localStorage:', error);
-      // Reset cart if there's an error
       setCart([]);
       localStorage.removeItem(getCartStorageKey());
     }
@@ -72,24 +67,29 @@ export const useCart = () => {
   useEffect(() => {
     if (!isLoading) {
       const cartKey = getCartStorageKey();
+      console.log('Saving cart to localStorage:', cartKey, cart);
       localStorage.setItem(cartKey, JSON.stringify(cart));
     }
   }, [cart, isLoading, user]);
   
   // Add item to cart
   const addToCart = (item: any, quantity = 1) => {
-    if (!item) {
-      console.error('Attempted to add undefined item to cart');
+    if (!item || !item.id) {
+      console.error('Invalid item passed to addToCart:', item);
+      toast({
+        title: "Error",
+        description: "Invalid item. Please try again.",
+        variant: "destructive"
+      });
       return;
     }
     
-    console.log('Adding item to cart:', item);
+    console.log('Adding item to cart:', item, 'quantity:', quantity);
     
-    // Extract only the fields we need from the item
     const cartItem: CartItem = {
       id: item.id,
       name: item.name,
-      price: item.price,
+      price: Number(item.price),
       image: item.image || '',
       quantity: quantity,
       description: item.description,
@@ -97,23 +97,24 @@ export const useCart = () => {
     };
     
     setCart(currentCart => {
-      // Check if item already exists
       const existingItemIndex = currentCart.findIndex(cartItem => cartItem.id === item.id);
       
+      let updatedCart;
       if (existingItemIndex !== -1) {
         // Item exists, update quantity
-        const updatedCart = [...currentCart];
+        updatedCart = [...currentCart];
         updatedCart[existingItemIndex].quantity += quantity;
-        console.log('Updated existing item quantity:', updatedCart[existingItemIndex]);
-        return updatedCart;
+        console.log('Updated existing item:', updatedCart[existingItemIndex]);
       } else {
         // Item doesn't exist, add new item
-        console.log('Adding new item to cart:', cartItem);
-        return [...currentCart, cartItem];
+        updatedCart = [...currentCart, cartItem];
+        console.log('Added new item to cart:', cartItem);
       }
+      
+      console.log('Updated cart state:', updatedCart);
+      return updatedCart;
     });
     
-    // Show toast message
     toast({
       title: "Added to Cart",
       description: `${item.name} has been added to your cart.`,
@@ -123,7 +124,12 @@ export const useCart = () => {
   
   // Remove item from cart
   const removeFromCart = (id: number) => {
-    setCart(currentCart => currentCart.filter(item => item.id !== id));
+    console.log('Removing item from cart:', id);
+    setCart(currentCart => {
+      const updatedCart = currentCart.filter(item => item.id !== id);
+      console.log('Cart after removal:', updatedCart);
+      return updatedCart;
+    });
     
     toast({
       title: "Item Removed",
@@ -134,20 +140,25 @@ export const useCart = () => {
   
   // Update item quantity
   const updateQuantity = (id: number, quantity: number) => {
+    console.log('Updating quantity for item:', id, 'to:', quantity);
+    
     if (quantity < 1) {
       removeFromCart(id);
       return;
     }
     
-    setCart(currentCart => 
-      currentCart.map(item => 
+    setCart(currentCart => {
+      const updatedCart = currentCart.map(item => 
         item.id === id ? { ...item, quantity } : item
-      )
-    );
+      );
+      console.log('Cart after quantity update:', updatedCart);
+      return updatedCart;
+    });
   };
   
   // Clear entire cart
   const clearCart = () => {
+    console.log('Clearing entire cart');
     setCart([]);
     
     toast({
@@ -158,10 +169,12 @@ export const useCart = () => {
   };
   
   // Calculate cart total
-  const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const cartTotal = cart.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
   
   // Calculate total number of items
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  
+  console.log('Current cart state:', { cart, cartTotal, itemCount });
   
   return {
     cart,
