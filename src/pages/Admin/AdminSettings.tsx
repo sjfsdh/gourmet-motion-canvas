@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Save, Settings, AlertCircle, Trash2, RefreshCw } from 'lucide-react';
+import { Save, Settings, AlertCircle, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getRestaurantSettings, updateRestaurantSettings, RestaurantSettings } from '@/services/settingsService';
@@ -28,7 +28,9 @@ const AdminSettings = () => {
   // Fetch current settings
   const { data: currentSettings, isLoading } = useQuery({
     queryKey: ['restaurantSettings'],
-    queryFn: getRestaurantSettings
+    queryFn: getRestaurantSettings,
+    refetchOnWindowFocus: true,
+    staleTime: 0 // Always fetch fresh data
   });
 
   // Update local state when settings are loaded
@@ -46,69 +48,23 @@ const AdminSettings = () => {
     onSuccess: (updatedSettings) => {
       console.log('AdminSettings: Settings updated successfully:', updatedSettings);
       
-      // Clear all caches
+      // Clear all caches and refetch
       queryClient.clear();
+      queryClient.invalidateQueries({ queryKey: ['restaurantSettings'] });
       
-      // Trigger custom event to update components across the app
-      window.dispatchEvent(new CustomEvent('settingsUpdated', { 
-        detail: updatedSettings 
-      }));
-      
-      // Force reload after a short delay to ensure all components update
       toast({
         title: "Settings Updated",
-        description: "Restaurant settings have been updated successfully. The page will refresh to apply changes.",
+        description: "Restaurant settings have been updated successfully.",
       });
       
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      // Update local state immediately
+      setSettings(updatedSettings);
     },
     onError: (error) => {
       console.error('AdminSettings: Error updating settings:', error);
       toast({
         title: "Error",
         description: "Failed to update settings. Please try again.",
-        variant: "destructive"
-      });
-    }
-  });
-
-  // Mutation for clearing demo data
-  const clearDataMutation = useMutation({
-    mutationFn: async () => {
-      console.log('Clearing demo data...');
-      const { supabase } = await import('@/integrations/supabase/client');
-      
-      // Clear orders and order items
-      await supabase.from('order_items').delete().neq('id', 0);
-      await supabase.from('orders').delete().neq('id', 0);
-      
-      // Clear localStorage
-      const keys = Object.keys(localStorage);
-      keys.forEach(key => {
-        if (key.includes('order') || key.includes('cart') || key.includes('demo')) {
-          localStorage.removeItem(key);
-        }
-      });
-      
-      console.log('Demo data cleared');
-      return true;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['databaseOrders'] });
-      queryClient.invalidateQueries({ queryKey: ['orderStats'] });
-      queryClient.clear();
-      toast({
-        title: "Data Cleared",
-        description: "All demo data has been removed from the database and local storage.",
-      });
-    },
-    onError: (error) => {
-      console.error('Error clearing demo data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to clear demo data.",
         variant: "destructive"
       });
     }
@@ -123,19 +79,31 @@ const AdminSettings = () => {
   };
 
   const handleSave = () => {
+    // Validate required fields
+    if (!settings.restaurant_name.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Restaurant name is required.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!settings.restaurant_email.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Restaurant email is required.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     console.log('AdminSettings: Saving settings:', settings);
     updateMutation.mutate(settings);
   };
 
-  const handleClearData = () => {
-    if (confirm('Are you sure you want to clear all orders and demo data? This action cannot be undone.')) {
-      clearDataMutation.mutate();
-    }
-  };
-
   const handleForceRefresh = () => {
     queryClient.clear();
-    localStorage.clear();
     window.location.reload();
   };
 
@@ -167,17 +135,7 @@ const AdminSettings = () => {
             className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center"
           >
             <RefreshCw size={16} className="mr-2" />
-            Force Refresh
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleClearData}
-            disabled={clearDataMutation.isPending}
-            className="bg-red-500 text-white px-4 py-2 rounded-lg flex items-center disabled:opacity-50"
-          >
-            <Trash2 size={16} className="mr-2" />
-            Clear Demo Data
+            Refresh Page
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -289,20 +247,7 @@ const AdminSettings = () => {
         >
           <div className="flex items-center text-green-800">
             <Settings className="mr-2" size={20} />
-            Settings have been updated successfully! Page will refresh to apply changes across the site.
-          </div>
-        </motion.div>
-      )}
-
-      {clearDataMutation.isSuccess && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md"
-        >
-          <div className="flex items-center text-blue-800">
-            <Trash2 className="mr-2" size={20} />
-            Demo data has been cleared successfully!
+            Settings have been updated successfully! Changes will be reflected across the site.
           </div>
         </motion.div>
       )}

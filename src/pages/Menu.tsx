@@ -17,15 +17,19 @@ const Menu: React.FC = () => {
   const [displayItems, setDisplayItems] = useState([]);
   
   // Fetch menu items from the database
-  const { data: menuItems, isLoading, error } = useQuery({
+  const { data: menuItems = [], isLoading, error } = useQuery({
     queryKey: ['menuItems'],
-    queryFn: getAllMenuItems
+    queryFn: getAllMenuItems,
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000 // 5 minutes
   });
 
   // Fetch categories from database
   const { data: categoriesData = [] } = useQuery({
     queryKey: ['categories'],
-    queryFn: getAllCategories
+    queryFn: getAllCategories,
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000 // 5 minutes
   });
 
   // Transform categories data to include 'all' option
@@ -36,16 +40,21 @@ const Menu: React.FC = () => {
   
   // Update displayItems whenever menuItems, activeCategory or searchTerm changes
   useEffect(() => {
-    if (menuItems) {
+    if (menuItems && menuItems.length > 0) {
       console.log(`Successfully loaded ${menuItems.length} menu items`);
       const filtered = menuItems.filter(item => {
         const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
-        const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            item.description.toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesSearch && matchesCategory;
+        const matchesSearch = searchTerm === '' || 
+                            item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()));
+        const isInStock = item.in_stock !== false; // Show items that are in stock or have no stock info
+        return matchesSearch && matchesCategory && isInStock;
       });
       
+      console.log(`Filtered to ${filtered.length} items for category: ${activeCategory}, search: "${searchTerm}"`);
       setDisplayItems(filtered);
+    } else {
+      setDisplayItems([]);
     }
   }, [activeCategory, searchTerm, menuItems]);
 
@@ -110,10 +119,11 @@ const Menu: React.FC = () => {
 
           <div className="flex-grow">
             <AnimatedSection animation="fadeIn">
-              {activeCategory === 'all' && !searchTerm && !isLoading && !error && (
+              {/* Featured items - only show when no filters applied */}
+              {activeCategory === 'all' && !searchTerm && !isLoading && !error && menuItems.length > 0 && (
                 <div className="mb-10">
                   <MenuGrid
-                    items={menuItems?.filter(item => item.featured) || []}
+                    items={menuItems.filter(item => item.featured && item.in_stock !== false) || []}
                     activeCategory={activeCategory}
                     onClearFilters={handleClearFilters}
                     showFeatured={true}

@@ -17,7 +17,7 @@ export interface RestaurantSettings {
   twitter_url?: string;
 }
 
-// Default settings
+// Default settings - fallback only
 const defaultSettings: RestaurantSettings = {
   id: 1,
   restaurant_name: 'DistinctGyrro',
@@ -35,7 +35,7 @@ const defaultSettings: RestaurantSettings = {
 
 export const getRestaurantSettings = async (): Promise<RestaurantSettings> => {
   try {
-    console.log('Loading restaurant settings...');
+    console.log('Loading restaurant settings from database...');
     const { data, error } = await supabase
       .from('settings')
       .select('*')
@@ -43,20 +43,20 @@ export const getRestaurantSettings = async (): Promise<RestaurantSettings> => {
 
     if (error) {
       console.error('Error loading restaurant settings:', error);
-      console.log('Using default settings');
+      console.log('Using default settings as fallback');
       return defaultSettings;
     }
 
     console.log('Loaded settings from database:', data);
 
-    // Map database fields to interface
-    const settings = {
+    // Map database fields to interface, use database values
+    const settings: RestaurantSettings = {
       id: data.id,
-      restaurant_name: data.restaurant_name || defaultSettings.restaurant_name,
-      restaurant_address: data.restaurant_address || defaultSettings.restaurant_address,
-      restaurant_phone: data.restaurant_phone || defaultSettings.restaurant_phone,
-      restaurant_email: data.restaurant_email || defaultSettings.restaurant_email,
-      opening_hours: data.opening_hours || defaultSettings.opening_hours,
+      restaurant_name: data.restaurant_name,
+      restaurant_address: data.restaurant_address,
+      restaurant_phone: data.restaurant_phone,
+      restaurant_email: data.restaurant_email,
+      opening_hours: data.opening_hours,
       logo_url: '',
       hero_image_url: defaultSettings.hero_image_url,
       about_text: defaultSettings.about_text,
@@ -116,14 +116,14 @@ export const updateRestaurantSettings = async (
       twitter_url: ''
     };
     
-    console.log('Triggering settings update event');
+    console.log('Broadcasting settings update event');
     // Trigger a custom event to notify components of settings change
     window.dispatchEvent(new CustomEvent('settingsUpdated', { 
       detail: updatedSettings 
     }));
     
-    // Also update localStorage for immediate access
-    localStorage.setItem('restaurantSettings', JSON.stringify(updatedSettings));
+    // Clear localStorage cache to force refresh
+    localStorage.removeItem('restaurantSettings');
     
     return updatedSettings;
   } catch (error) {
@@ -144,10 +144,9 @@ export const useRestaurantSettings = () => {
         const loadedSettings = await getRestaurantSettings();
         console.log('useRestaurantSettings: Settings loaded:', loadedSettings);
         setSettings(loadedSettings);
-        // Store in localStorage for immediate access
-        localStorage.setItem('restaurantSettings', JSON.stringify(loadedSettings));
       } catch (error) {
         console.error('useRestaurantSettings: Error loading settings:', error);
+        setSettings(defaultSettings);
       } finally {
         setIsLoading(false);
       }
@@ -159,7 +158,6 @@ export const useRestaurantSettings = () => {
     const handleSettingsUpdate = (event: CustomEvent) => {
       console.log('useRestaurantSettings: Settings update event received:', event.detail);
       setSettings(event.detail);
-      localStorage.setItem('restaurantSettings', JSON.stringify(event.detail));
     };
 
     window.addEventListener('settingsUpdated', handleSettingsUpdate as EventListener);

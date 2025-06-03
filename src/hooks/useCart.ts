@@ -19,19 +19,9 @@ export const useCart = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   
-  // Generate a unique cart ID for the current browser session
-  const getCartId = () => {
-    let cartId = localStorage.getItem('cartId');
-    if (!cartId) {
-      cartId = `cart_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem('cartId', cartId);
-    }
-    return cartId;
-  };
-  
   // Get the cart storage key - either user-specific or session-specific
   const getCartStorageKey = () => {
-    return user ? `cart_${user.id}` : `cart_${getCartId()}`;
+    return user ? `cart_${user.id}` : 'guest_cart';
   };
   
   useEffect(() => {
@@ -44,8 +34,14 @@ export const useCart = () => {
       if (savedCart) {
         const parsedCart = JSON.parse(savedCart);
         if (Array.isArray(parsedCart)) {
-          setCart(parsedCart);
-          console.log('Cart loaded:', parsedCart);
+          // Validate cart items structure
+          const validCart = parsedCart.filter(item => 
+            item && typeof item === 'object' && 
+            item.id && item.name && item.price && 
+            typeof item.quantity === 'number' && item.quantity > 0
+          );
+          setCart(validCart);
+          console.log('Cart loaded:', validCart);
         } else {
           console.log('Invalid cart data, resetting cart');
           setCart([]);
@@ -87,23 +83,23 @@ export const useCart = () => {
     console.log('Adding item to cart:', item, 'quantity:', quantity);
     
     const cartItem: CartItem = {
-      id: item.id,
-      name: item.name,
+      id: Number(item.id),
+      name: String(item.name),
       price: Number(item.price),
       image: item.image || '',
-      quantity: quantity,
+      quantity: Number(quantity),
       description: item.description,
       category: item.category
     };
     
     setCart(currentCart => {
-      const existingItemIndex = currentCart.findIndex(cartItem => cartItem.id === item.id);
+      const existingItemIndex = currentCart.findIndex(cartItem => cartItem.id === Number(item.id));
       
       let updatedCart;
       if (existingItemIndex !== -1) {
         // Item exists, update quantity
         updatedCart = [...currentCart];
-        updatedCart[existingItemIndex].quantity += quantity;
+        updatedCart[existingItemIndex].quantity += Number(quantity);
         console.log('Updated existing item:', updatedCart[existingItemIndex]);
       } else {
         // Item doesn't exist, add new item
@@ -126,7 +122,7 @@ export const useCart = () => {
   const removeFromCart = (id: number) => {
     console.log('Removing item from cart:', id);
     setCart(currentCart => {
-      const updatedCart = currentCart.filter(item => item.id !== id);
+      const updatedCart = currentCart.filter(item => item.id !== Number(id));
       console.log('Cart after removal:', updatedCart);
       return updatedCart;
     });
@@ -149,7 +145,7 @@ export const useCart = () => {
     
     setCart(currentCart => {
       const updatedCart = currentCart.map(item => 
-        item.id === id ? { ...item, quantity } : item
+        item.id === Number(id) ? { ...item, quantity: Number(quantity) } : item
       );
       console.log('Cart after quantity update:', updatedCart);
       return updatedCart;
@@ -169,10 +165,10 @@ export const useCart = () => {
   };
   
   // Calculate cart total
-  const cartTotal = cart.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
+  const cartTotal = cart.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
   
   // Calculate total number of items
-  const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const itemCount = cart.reduce((sum, item) => sum + Number(item.quantity), 0);
   
   console.log('Current cart state:', { cart, cartTotal, itemCount });
   

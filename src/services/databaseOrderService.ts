@@ -119,18 +119,27 @@ export const createDatabaseOrder = async (orderData: {
   try {
     console.log('Creating new order:', orderData);
     
+    // Validate required fields
+    if (!orderData.customer_name || !orderData.customer_email) {
+      throw new Error('Customer name and email are required');
+    }
+    
+    if (!orderData.items || orderData.items.length === 0) {
+      throw new Error('Order must contain at least one item');
+    }
+    
     // Create the order
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
-        customer_name: orderData.customer_name,
-        customer_email: orderData.customer_email,
-        customer_phone: orderData.customer_phone,
-        total: orderData.total,
+        customer_name: orderData.customer_name.trim(),
+        customer_email: orderData.customer_email.trim(),
+        customer_phone: orderData.customer_phone?.trim() || null,
+        total: Number(orderData.total),
         status: orderData.status || 'pending',
         payment_status: orderData.payment_status || 'pending',
-        payment_method: orderData.payment_method,
-        address: orderData.address
+        payment_method: orderData.payment_method || 'card',
+        address: orderData.address?.trim() || null
       })
       .select()
       .single();
@@ -145,10 +154,10 @@ export const createDatabaseOrder = async (orderData: {
     // Create order items
     const orderItems = orderData.items.map(item => ({
       order_id: order.id,
-      menu_item_id: item.menu_item_id,
-      quantity: item.quantity,
-      price: item.price,
-      subtotal: item.quantity * item.price
+      menu_item_id: Number(item.menu_item_id),
+      quantity: Number(item.quantity),
+      price: Number(item.price),
+      subtotal: Number(item.quantity) * Number(item.price)
     }));
 
     console.log('Creating order items:', orderItems);
@@ -159,6 +168,8 @@ export const createDatabaseOrder = async (orderData: {
 
     if (itemsError) {
       console.error('Error creating order items:', itemsError);
+      // If order items creation fails, delete the order
+      await supabase.from('orders').delete().eq('id', order.id);
       throw itemsError;
     }
 
