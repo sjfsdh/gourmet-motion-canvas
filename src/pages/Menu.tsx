@@ -33,6 +33,16 @@ const Menu = () => {
     queryFn: getAllCategories,
   });
 
+  // Transform categories to match the expected format (string id)
+  const transformedCategories = useMemo(() => {
+    const allCategory = { id: 'all', name: 'All Categories' };
+    const categoryList = categories.map(cat => ({
+      id: cat.name, // Use name as id for consistency
+      name: cat.display_name || cat.name
+    }));
+    return [allCategory, ...categoryList];
+  }, [categories]);
+
   // Filter menu items based on search and category
   const filteredItems = useMemo(() => {
     let filtered = menuItems;
@@ -66,6 +76,11 @@ const Menu = () => {
     return filtered;
   }, [menuItems, searchTerm, selectedCategory, categories]);
 
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setSelectedCategory('all');
+  };
+
   const isLoading = menuLoading || categoriesLoading;
   const hasError = menuError || categoriesError;
 
@@ -92,26 +107,25 @@ const Menu = () => {
           </div>
         </AnimatedSection>
 
-        <AnimatedSection animation="slideInUp" delay={0.2}>
+        <AnimatedSection animation="slideUp" delay={0.2}>
           <div className="flex flex-col lg:flex-row gap-6 mb-8">
             <div className="flex-grow">
               <MenuSearch 
-                searchTerm={searchTerm} 
-                onSearchChange={setSearchTerm} 
+                value={searchTerm} 
+                onChange={setSearchTerm} 
               />
             </div>
             <div className="lg:w-64">
               <CategoryFilter
-                categories={categories}
-                selectedCategory={selectedCategory}
+                categories={transformedCategories}
+                activeCategory={selectedCategory}
                 onCategoryChange={setSelectedCategory}
-                isLoading={categoriesLoading}
               />
             </div>
           </div>
         </AnimatedSection>
 
-        <AnimatedSection animation="slideInUp" delay={0.4}>
+        <AnimatedSection animation="slideUp" delay={0.4}>
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-restaurant-green"></div>
@@ -129,10 +143,7 @@ const Menu = () => {
                   </p>
                   {(searchTerm || selectedCategory !== 'all') && (
                     <button
-                      onClick={() => {
-                        setSearchTerm('');
-                        setSelectedCategory('all');
-                      }}
+                      onClick={handleClearFilters}
                       className="mt-4 bg-restaurant-green text-white px-4 py-2 rounded-md hover:bg-restaurant-green/90"
                     >
                       Clear Filters
@@ -145,11 +156,15 @@ const Menu = () => {
                     Showing {filteredItems.length} of {menuItems.length} items
                     {selectedCategory !== 'all' && (
                       <span className="ml-2">
-                        in <strong>{categories.find(cat => cat.name === selectedCategory || cat.display_name === selectedCategory)?.display_name || selectedCategory}</strong>
+                        in <strong>{transformedCategories.find(cat => cat.id === selectedCategory)?.name || selectedCategory}</strong>
                       </span>
                     )}
                   </div>
-                  <MenuGrid items={filteredItems} />
+                  <MenuGrid 
+                    items={filteredItems} 
+                    activeCategory={selectedCategory}
+                    onClearFilters={handleClearFilters}
+                  />
                 </div>
               )}
             </>
