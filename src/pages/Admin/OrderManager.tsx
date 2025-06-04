@@ -10,7 +10,8 @@ import {
   Search,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  RefreshCw
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -34,9 +35,10 @@ const OrderManager = () => {
   const [statusFilter, setStatusFilter] = useState('all');
 
   // Fetch orders from database
-  const { data: orders = [], isLoading, error } = useQuery({
+  const { data: orders = [], isLoading, error, refetch } = useQuery({
     queryKey: ['databaseOrders'],
-    queryFn: getAllDatabaseOrders
+    queryFn: getAllDatabaseOrders,
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   // Update order status mutation
@@ -83,6 +85,14 @@ const OrderManager = () => {
     }
   };
 
+  const handleRefresh = () => {
+    refetch();
+    toast({
+      title: "Refreshed",
+      description: "Order data has been refreshed",
+    });
+  };
+
   // Filter orders based on search and status filter
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
@@ -111,6 +121,12 @@ const OrderManager = () => {
         <div className="text-center py-8">
           <h3 className="text-lg font-medium text-red-900 mb-2">Error Loading Orders</h3>
           <p className="text-red-500">Failed to load orders. Please try again.</p>
+          <button 
+            onClick={handleRefresh}
+            className="mt-4 bg-restaurant-green text-white px-4 py-2 rounded-md hover:bg-restaurant-green/90"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -121,9 +137,17 @@ const OrderManager = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold mb-1">Order Management</h1>
-          <p className="text-gray-500">Manage and process customer orders</p>
+          <p className="text-gray-500">Manage and process customer orders ({orders.length} total orders)</p>
         </div>
         <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={handleRefresh}
+            className="flex items-center space-x-2 px-4 py-2 bg-restaurant-green text-white rounded-md hover:bg-restaurant-green/90"
+          >
+            <RefreshCw size={16} />
+            <span>Refresh</span>
+          </button>
+          
           <div className="relative">
             <input
               type="text"
@@ -153,8 +177,15 @@ const OrderManager = () => {
         {filteredOrders.length === 0 ? (
           <div className="p-8 text-center">
             <ShoppingCart size={48} className="mx-auto text-gray-300 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-1">No orders found</h3>
-            <p className="text-gray-500">Try adjusting your search or filters</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-1">
+              {orders.length === 0 ? 'No orders yet' : 'No orders found'}
+            </h3>
+            <p className="text-gray-500">
+              {orders.length === 0 
+                ? 'Orders will appear here when customers place them' 
+                : 'Try adjusting your search or filters'
+              }
+            </p>
           </div>
         ) : (
           <ul className="divide-y divide-gray-200">
@@ -188,6 +219,8 @@ const OrderManager = () => {
                       <div className="mt-1 flex flex-col sm:flex-row sm:items-center text-sm text-gray-500">
                         <p>{order.customer_name}</p>
                         <span className="hidden sm:inline mx-2">•</span>
+                        <p>{order.customer_email}</p>
+                        <span className="hidden sm:inline mx-2">•</span>
                         <p>{new Date(order.created_at).toLocaleDateString()}</p>
                         <span className="hidden sm:inline mx-2">•</span>
                         <p>${Number(order.total).toFixed(2)}</p>
@@ -217,12 +250,18 @@ const OrderManager = () => {
                           <h4 className="font-medium text-gray-900 mb-2">Customer Information</h4>
                           <p className="text-sm text-gray-700">Name: {order.customer_name}</p>
                           <p className="text-sm text-gray-700">Email: {order.customer_email}</p>
-                          <p className="text-sm text-gray-700">Phone: {order.customer_phone}</p>
+                          {order.customer_phone && (
+                            <p className="text-sm text-gray-700">Phone: {order.customer_phone}</p>
+                          )}
                         </div>
                         <div>
                           <h4 className="font-medium text-gray-900 mb-2">Delivery Information</h4>
-                          <p className="text-sm text-gray-700">Address: {order.address}</p>
-                          <p className="text-sm text-gray-700">Payment Method: {order.payment_method}</p>
+                          {order.address && (
+                            <p className="text-sm text-gray-700">Address: {order.address}</p>
+                          )}
+                          {order.payment_method && (
+                            <p className="text-sm text-gray-700">Payment Method: {order.payment_method}</p>
+                          )}
                         </div>
                       </div>
                       

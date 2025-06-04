@@ -14,7 +14,7 @@ const Header = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { settings } = useRestaurantSettings();
+  const { settings, isLoading } = useRestaurantSettings();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -43,7 +43,10 @@ const Header = () => {
     return false;
   };
 
-  console.log('Header rendering with settings:', settings);
+  // Get restaurant name with fallback
+  const restaurantName = settings?.restaurant_name || 'DistinctGyrro';
+
+  console.log('Header rendering with settings:', { settings, restaurantName, isLoading });
 
   return (
     <motion.header
@@ -63,7 +66,7 @@ const Header = () => {
               whileHover={{ scale: 1.05 }}
               className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-restaurant-green to-restaurant-terracotta bg-clip-text text-transparent"
             >
-              {settings.restaurant_name}
+              {restaurantName}
             </motion.div>
           </Link>
 

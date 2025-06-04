@@ -1,157 +1,160 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import AnimatedSection from '@/components/animations/AnimatedSection';
-import { useToast } from '@/hooks/use-toast';
+import MenuGrid from '@/components/menu/MenuGrid';
 import MenuSearch from '@/components/menu/MenuSearch';
 import CategoryFilter from '@/components/menu/CategoryFilter';
-import MenuGrid from '@/components/menu/MenuGrid';
+import AnimatedSection from '@/components/animations/AnimatedSection';
 import { getAllMenuItems } from '@/services/menuService';
 import { getAllCategories } from '@/services/categoryService';
-import { useQuery } from '@tanstack/react-query';
 
-const Menu: React.FC = () => {
-  const [activeCategory, setActiveCategory] = useState('all');
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+const Menu = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [displayItems, setDisplayItems] = useState([]);
-  
-  // Fetch menu items from the database
-  const { data: menuItems = [], isLoading, error } = useQuery({
+  const [selectedCategory, setSelectedCategory] = useState('all');
+
+  // Fetch menu items
+  const { 
+    data: menuItems = [], 
+    isLoading: menuLoading, 
+    error: menuError 
+  } = useQuery({
     queryKey: ['menuItems'],
     queryFn: getAllMenuItems,
-    refetchOnWindowFocus: false,
-    staleTime: 5 * 60 * 1000 // 5 minutes
   });
 
-  // Fetch categories from database
-  const { data: categoriesData = [] } = useQuery({
+  // Fetch categories
+  const { 
+    data: categories = [], 
+    isLoading: categoriesLoading,
+    error: categoriesError 
+  } = useQuery({
     queryKey: ['categories'],
     queryFn: getAllCategories,
-    refetchOnWindowFocus: false,
-    staleTime: 5 * 60 * 1000 // 5 minutes
   });
 
-  // Transform categories data to include 'all' option
-  const categories = [
-    { id: 'all', name: 'All Items' },
-    ...categoriesData.map(cat => ({ id: cat.name, name: cat.display_name }))
-  ];
-  
-  // Update displayItems whenever menuItems, activeCategory or searchTerm changes
-  useEffect(() => {
-    if (menuItems && menuItems.length > 0) {
-      console.log(`Successfully loaded ${menuItems.length} menu items`);
-      const filtered = menuItems.filter(item => {
-        const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
-        const matchesSearch = searchTerm === '' || 
-                            item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()));
-        const isInStock = item.in_stock !== false; // Show items that are in stock or have no stock info
-        return matchesSearch && matchesCategory && isInStock;
-      });
-      
-      console.log(`Filtered to ${filtered.length} items for category: ${activeCategory}, search: "${searchTerm}"`);
-      setDisplayItems(filtered);
-    } else {
-      setDisplayItems([]);
+  // Filter menu items based on search and category
+  const filteredItems = useMemo(() => {
+    let filtered = menuItems;
+
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(item =>
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.category.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
-  }, [activeCategory, searchTerm, menuItems]);
 
-  // Scroll to top when category changes
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [activeCategory]);
+    // Filter by category
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(item => {
+        // Handle both category name and display_name
+        const category = categories.find(cat => 
+          cat.name === selectedCategory || cat.display_name === selectedCategory
+        );
+        
+        if (category) {
+          return item.category === category.name || item.category === category.display_name;
+        }
+        
+        // Fallback to direct comparison
+        return item.category === selectedCategory;
+      });
+    }
 
-  const handleClearFilters = () => {
-    setSearchTerm('');
-    setActiveCategory('all');
-  };
+    return filtered;
+  }, [menuItems, searchTerm, selectedCategory, categories]);
+
+  const isLoading = menuLoading || categoriesLoading;
+  const hasError = menuError || categoriesError;
+
+  if (hasError) {
+    return (
+      <div className="container-custom py-12">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Error Loading Menu</h2>
+          <p className="text-gray-600">Please try refreshing the page.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-gray-50">
-      {/* Menu Header */}
-      <section className="bg-restaurant-green py-16 md:py-24 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="blob absolute top-0 right-0 w-96 h-96 bg-blue-500 -mr-24 -mt-24"></div>
-          <div className="blob-2 absolute bottom-0 left-0 w-96 h-96 bg-restaurant-terracotta -ml-24 -mb-24"></div>
-        </div>
-        
-        <div className="container-custom text-center relative z-10">
-          <AnimatedSection animation="fadeIn">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 text-white">Our Menu</h1>
-            <div className="w-24 h-1 bg-restaurant-terracotta mx-auto mb-6"></div>
-            <p className="max-w-2xl mx-auto text-lg text-white/80 mb-8">
-              Explore our carefully crafted dishes, made with the finest ingredients and passion for culinary excellence.
-            </p>
-            
-            <MenuSearch
-              value={searchTerm}
-              onChange={setSearchTerm}
-              className="max-w-md mx-auto hidden md:block"
-            />
-          </AnimatedSection>
-        </div>
-      </section>
-
+    <div className="bg-gray-50 min-h-screen">
       <div className="container-custom py-12">
-        <MenuSearch
-          value={searchTerm}
-          onChange={setSearchTerm}
-          className="md:hidden mb-6"
-        />
+        <AnimatedSection animation="fadeIn">
+          <div className="text-center mb-12">
+            <h1 className="text-3xl md:text-4xl font-bold mb-4">Our Menu</h1>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Discover our carefully crafted dishes made with the finest ingredients and authentic flavors.
+            </p>
+          </div>
+        </AnimatedSection>
 
-        <div className="flex flex-col lg:flex-row gap-8">
-          <CategoryFilter
-            categories={categories}
-            activeCategory={activeCategory}
-            onCategoryChange={setActiveCategory}
-            isMobile={true}
-            mobileFiltersOpen={mobileFiltersOpen}
-            onMobileToggle={() => setMobileFiltersOpen(!mobileFiltersOpen)}
-          />
+        <AnimatedSection animation="slideInUp" delay={0.2}>
+          <div className="flex flex-col lg:flex-row gap-6 mb-8">
+            <div className="flex-grow">
+              <MenuSearch 
+                searchTerm={searchTerm} 
+                onSearchChange={setSearchTerm} 
+              />
+            </div>
+            <div className="lg:w-64">
+              <CategoryFilter
+                categories={categories}
+                selectedCategory={selectedCategory}
+                onCategoryChange={setSelectedCategory}
+                isLoading={categoriesLoading}
+              />
+            </div>
+          </div>
+        </AnimatedSection>
 
-          <CategoryFilter
-            categories={categories}
-            activeCategory={activeCategory}
-            onCategoryChange={setActiveCategory}
-          />
-
-          <div className="flex-grow">
-            <AnimatedSection animation="fadeIn">
-              {/* Featured items - only show when no filters applied */}
-              {activeCategory === 'all' && !searchTerm && !isLoading && !error && menuItems.length > 0 && (
-                <div className="mb-10">
-                  <MenuGrid
-                    items={menuItems.filter(item => item.featured && item.in_stock !== false) || []}
-                    activeCategory={activeCategory}
-                    onClearFilters={handleClearFilters}
-                    showFeatured={true}
-                    isLoading={isLoading}
-                    error={error}
-                  />
+        <AnimatedSection animation="slideInUp" delay={0.4}>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-restaurant-green"></div>
+            </div>
+          ) : (
+            <>
+              {filteredItems.length === 0 ? (
+                <div className="text-center py-12">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No items found</h3>
+                  <p className="text-gray-600">
+                    {searchTerm || selectedCategory !== 'all' 
+                      ? 'Try adjusting your search or filter.' 
+                      : 'Menu items will appear here once they are added.'
+                    }
+                  </p>
+                  {(searchTerm || selectedCategory !== 'all') && (
+                    <button
+                      onClick={() => {
+                        setSearchTerm('');
+                        setSelectedCategory('all');
+                      }}
+                      className="mt-4 bg-restaurant-green text-white px-4 py-2 rounded-md hover:bg-restaurant-green/90"
+                    >
+                      Clear Filters
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <div className="mb-4 text-sm text-gray-600">
+                    Showing {filteredItems.length} of {menuItems.length} items
+                    {selectedCategory !== 'all' && (
+                      <span className="ml-2">
+                        in <strong>{categories.find(cat => cat.name === selectedCategory || cat.display_name === selectedCategory)?.display_name || selectedCategory}</strong>
+                      </span>
+                    )}
+                  </div>
+                  <MenuGrid items={filteredItems} />
                 </div>
               )}
-
-              {/* Regular menu items */}
-              <motion.div
-                key={activeCategory + searchTerm}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-              >
-                <MenuGrid
-                  items={displayItems}
-                  activeCategory={activeCategory}
-                  onClearFilters={handleClearFilters}
-                  showFeatured={false}
-                  isLoading={isLoading}
-                  error={error}
-                />
-              </motion.div>
-            </AnimatedSection>
-          </div>
-        </div>
+            </>
+          )}
+        </AnimatedSection>
       </div>
     </div>
   );
