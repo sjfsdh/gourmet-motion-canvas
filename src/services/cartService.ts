@@ -37,10 +37,10 @@ export const loadCartFromSupabase = async (userId: string): Promise<CartItem[]> 
       .from('user_carts')
       .select('cart_data')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
     
     if (error || !data) return [];
-    return data.cart_data || [];
+    return (data.cart_data as CartItem[]) || [];
   } catch (error) {
     console.error('Error loading cart from Supabase:', error);
     return [];
@@ -62,11 +62,11 @@ export const loadCartFromStorage = (userId?: string): CartItem[] => {
   }
 };
 
-export const clearCart = (userId?: string) => {
+export const clearCart = async (userId?: string) => {
   const key = getCartKey(userId);
   localStorage.removeItem(key);
   
   if (userId) {
-    supabase.from('user_carts').delete().eq('user_id', userId);
+    await supabase.from('user_carts').delete().eq('user_id', userId);
   }
 };

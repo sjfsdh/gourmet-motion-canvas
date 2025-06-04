@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { saveCartToSupabase, loadCartFromSupabase, saveCartToStorage, loadCartFromStorage } from '@/services/cartService';
+import { saveCartToSupabase, loadCartFromSupabase, saveCartToStorage, loadCartFromStorage, clearCart as clearCartService } from '@/services/cartService';
 
 export interface CartItem {
   id: number;
@@ -125,7 +125,7 @@ export const useCart = () => {
   
   const clearCart = async () => {
     setCart([]);
-    await saveCart([]);
+    await clearCartService(user?.id);
     
     toast({
       title: "Cart Cleared",
