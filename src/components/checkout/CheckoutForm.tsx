@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/useCart';
 import { createDatabaseOrder } from '@/services/databaseOrderService';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRestaurantSettings } from '@/services/settingsService';
 
 interface CheckoutFormData {
   customerName: string;
@@ -28,6 +29,11 @@ const CheckoutForm = () => {
   const queryClient = useQueryClient();
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderId, setOrderId] = useState<number | null>(null);
+  const { settings } = useRestaurantSettings();
+
+  // Get configurable rates from settings (default to 0)
+  const taxRate = 0; // Set to 0 as requested
+  const deliveryFee = 0; // Set to 0 as requested
 
   console.log('CheckoutForm - Current cart:', cart);
   console.log('CheckoutForm - Cart total:', cartTotal);
@@ -182,9 +188,9 @@ const CheckoutForm = () => {
       return;
     }
 
-    const deliveryFee = formData.deliveryMethod === 'delivery' ? 4.99 : 0;
-    const tax = cartTotal * 0.0825;
-    const finalTotal = cartTotal + deliveryFee + tax;
+    const currentDeliveryFee = formData.deliveryMethod === 'delivery' ? deliveryFee : 0;
+    const tax = cartTotal * taxRate;
+    const finalTotal = cartTotal + currentDeliveryFee + tax;
 
     const orderData = {
       customer_name: formData.customerName.trim(),
@@ -260,9 +266,9 @@ const CheckoutForm = () => {
     );
   }
 
-  const deliveryFee = formData.deliveryMethod === 'delivery' ? 4.99 : 0;
-  const tax = cartTotal * 0.0825;
-  const total = cartTotal + deliveryFee + tax;
+  const currentDeliveryFee = formData.deliveryMethod === 'delivery' ? deliveryFee : 0;
+  const tax = cartTotal * taxRate;
+  const total = cartTotal + currentDeliveryFee + tax;
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -344,7 +350,7 @@ const CheckoutForm = () => {
                   <Truck className="mr-3" size={20} />
                   <div>
                     <div className="font-medium">Delivery</div>
-                    <div className="text-sm text-gray-500">35-45 min • $4.99</div>
+                    <div className="text-sm text-gray-500">35-45 min • ${deliveryFee.toFixed(2)}</div>
                   </div>
                 </div>
               </label>
@@ -554,13 +560,13 @@ const CheckoutForm = () => {
                 <span>${cartTotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span>Tax (8.25%)</span>
+                <span>Tax ({(taxRate * 100).toFixed(1)}%)</span>
                 <span>${tax.toFixed(2)}</span>
               </div>
-              {deliveryFee > 0 && (
+              {currentDeliveryFee > 0 && (
                 <div className="flex justify-between">
                   <span>Delivery Fee</span>
-                  <span>${deliveryFee.toFixed(2)}</span>
+                  <span>${currentDeliveryFee.toFixed(2)}</span>
                 </div>
               )}
               <div className="border-t pt-2 flex justify-between font-semibold text-lg">

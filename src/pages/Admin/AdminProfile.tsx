@@ -3,16 +3,19 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, Lock, Save, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AdminProfile = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
   const [profileData, setProfileData] = useState({
-    username: 'admin',
-    email: 'admin@restaurant.com',
+    username: user?.email?.split('@')[0] || 'admin',
+    email: user?.email || 'admin@restaurant.com',
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
@@ -49,11 +52,6 @@ const AdminProfile = () => {
     }
 
     if (profileData.newPassword) {
-      if (!profileData.currentPassword) {
-        newErrors.currentPassword = 'Current password is required to change password';
-        isValid = false;
-      }
-
       if (profileData.newPassword.length < 6) {
         newErrors.newPassword = 'New password must be at least 6 characters';
         isValid = false;
@@ -82,23 +80,31 @@ const AdminProfile = () => {
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Store in localStorage for demo purposes
-      localStorage.setItem('adminProfile', JSON.stringify({
-        username: profileData.username,
-        email: profileData.email,
-        lastUpdated: new Date().toISOString()
-      }));
+      // Update email if changed
+      if (profileData.email !== user?.email) {
+        const { error: emailError } = await supabase.auth.updateUser({
+          email: profileData.email
+        });
+        
+        if (emailError) {
+          throw new Error(`Failed to update email: ${emailError.message}`);
+        }
+      }
 
+      // Update password if provided
       if (profileData.newPassword) {
-        localStorage.setItem('adminPassword', profileData.newPassword);
+        const { error: passwordError } = await supabase.auth.updateUser({
+          password: profileData.newPassword
+        });
+        
+        if (passwordError) {
+          throw new Error(`Failed to update password: ${passwordError.message}`);
+        }
       }
 
       toast({
         title: "Profile Updated",
-        description: "Your profile has been updated successfully. Please log in again with your new credentials.",
+        description: "Your profile has been updated successfully.",
       });
 
       // Clear password fields
@@ -109,10 +115,11 @@ const AdminProfile = () => {
         confirmPassword: ''
       }));
 
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Profile update error:', error);
       toast({
         title: "Error",
-        description: "Failed to update profile. Please try again.",
+        description: error.message || "Failed to update profile. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -185,31 +192,6 @@ const AdminProfile = () => {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Current Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showCurrentPassword ? "text" : "password"}
-                  value={profileData.currentPassword}
-                  onChange={(e) => handleInputChange('currentPassword', e.target.value)}
-                  className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green pr-10 ${
-                    errors.currentPassword ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter current password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                >
-                  {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-              {errors.currentPassword && <p className="text-red-500 text-sm mt-1">{errors.currentPassword}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
                 New Password
               </label>
               <div className="relative">
@@ -220,7 +202,7 @@ const AdminProfile = () => {
                   className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green pr-10 ${
                     errors.newPassword ? 'border-red-500' : 'border-gray-300'
                   }`}
-                  placeholder="Enter new password"
+                  placeholder="Enter new password (optional)"
                 />
                 <button
                   type="button"
@@ -272,7 +254,7 @@ const AdminProfile = () => {
         <p className="text-blue-800 text-sm">
           Username: <strong>{profileData.username}</strong><br/>
           Email: <strong>{profileData.email}</strong><br/>
-          <span className="text-xs text-blue-600">After updating, please log out and log back in with your new credentials</span>
+          <span className="text-xs text-blue-600">Changes will be applied immediately</span>
         </p>
       </div>
     </div>
