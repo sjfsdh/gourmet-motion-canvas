@@ -30,63 +30,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check for existing session
-    const initAuth = async () => {
-      setIsLoading(true);
-      
-      // Get current session
-      const { data: sessionData } = await supabase.auth.getSession();
-      setSession(sessionData.session);
-      setUser(sessionData.session?.user ?? null);
-
-      // Check if user is admin
-      const adminToken = localStorage.getItem('adminToken');
-      setIsAdmin(!!adminToken);
-      
-      setIsLoading(false);
-    };
-
-    initAuth();
-
     // Set up auth state listener
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, newSession) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       console.log("Auth state changed:", event, newSession?.user?.email);
       setSession(newSession);
       setUser(newSession?.user ?? null);
       
-      // If logging out, ensure we clear admin status too
+      // Clear admin status on sign out
       if (event === 'SIGNED_OUT') {
-        localStorage.removeItem('adminToken');
         setIsAdmin(false);
       }
       
-      // Special handling for admin@example.com login
-      if (event === 'SIGNED_IN' && newSession?.user?.email === 'admin@example.com') {
-        console.log("Admin user signed in");
-        localStorage.setItem('adminToken', 'mock-jwt-admin-token');
-        localStorage.setItem('adminUser', JSON.stringify({ 
-          name: 'Admin User', 
-          email: 'admin@example.com',
-          role: 'Administrator'
-        }));
-        setIsAdmin(true);
+      // Check admin status for authenticated users
+      if (newSession?.user) {
+        setTimeout(() => {
+          checkAdminStatus(newSession.user.id);
+        }, 0);
       }
+      
+      setIsLoading(false);
     });
+
+    // Get initial session
+    const getInitialSession = async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      setSession(sessionData.session);
+      setUser(sessionData.session?.user ?? null);
+      
+      if (sessionData.session?.user) {
+        await checkAdminStatus(sessionData.session.user.id);
+      }
+      
+      setIsLoading(false);
+    };
+
+    getInitialSession();
 
     return () => {
       authListener.subscription.unsubscribe();
     };
   }, []);
 
+  const checkAdminStatus = async (userId: string) => {
+    try {
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('role', 'admin')
+        .single();
+      
+      setIsAdmin(!!data);
+    } catch (error) {
+      setIsAdmin(false);
+    }
+  };
+
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
-      
-      // If the user was an admin, clear the admin token
-      if (isAdmin) {
-        localStorage.removeItem('adminToken');
-        setIsAdmin(false);
-      }
+      setIsAdmin(false);
       
       toast({
         title: "Signed out successfully",

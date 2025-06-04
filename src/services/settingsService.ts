@@ -1,5 +1,5 @@
 
-import React from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface RestaurantSettings {
@@ -17,7 +17,6 @@ export interface RestaurantSettings {
   twitter_url?: string;
 }
 
-// Default settings - fallback only
 const defaultSettings: RestaurantSettings = {
   id: 1,
   restaurant_name: 'DistinctGyrro',
@@ -35,7 +34,6 @@ const defaultSettings: RestaurantSettings = {
 
 export const getRestaurantSettings = async (): Promise<RestaurantSettings> => {
   try {
-    console.log('Loading restaurant settings from database...');
     const { data, error } = await supabase
       .from('settings')
       .select('*')
@@ -43,14 +41,10 @@ export const getRestaurantSettings = async (): Promise<RestaurantSettings> => {
 
     if (error) {
       console.error('Error loading restaurant settings:', error);
-      console.log('Using default settings as fallback');
       return defaultSettings;
     }
 
-    console.log('Loaded settings from database:', data);
-
-    // Map database fields to interface, use database values
-    const settings: RestaurantSettings = {
+    return {
       id: data.id,
       restaurant_name: data.restaurant_name,
       restaurant_address: data.restaurant_address,
@@ -64,9 +58,6 @@ export const getRestaurantSettings = async (): Promise<RestaurantSettings> => {
       instagram_url: '',
       twitter_url: ''
     };
-
-    console.log('Final settings object:', settings);
-    return settings;
   } catch (error) {
     console.error('Error loading restaurant settings:', error);
     return defaultSettings;
@@ -78,8 +69,6 @@ export const updateRestaurantSettings = async (
   settings: Partial<RestaurantSettings>
 ): Promise<RestaurantSettings> => {
   try {
-    console.log('Updating restaurant settings:', settings);
-    
     const { data, error } = await supabase
       .from('settings')
       .update({
@@ -99,8 +88,6 @@ export const updateRestaurantSettings = async (
       throw error;
     }
 
-    console.log('Settings updated in database:', data);
-
     const updatedSettings: RestaurantSettings = {
       id: data.id,
       restaurant_name: data.restaurant_name,
@@ -116,14 +103,10 @@ export const updateRestaurantSettings = async (
       twitter_url: ''
     };
     
-    console.log('Broadcasting settings update event');
-    // Trigger a custom event to notify components of settings change
+    // Broadcast settings update
     window.dispatchEvent(new CustomEvent('settingsUpdated', { 
       detail: updatedSettings 
     }));
-    
-    // Clear localStorage cache to force refresh
-    localStorage.removeItem('restaurantSettings');
     
     return updatedSettings;
   } catch (error) {
@@ -132,20 +115,17 @@ export const updateRestaurantSettings = async (
   }
 };
 
-// Hook to listen for settings changes
 export const useRestaurantSettings = () => {
-  const [settings, setSettings] = React.useState<RestaurantSettings>(defaultSettings);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [settings, setSettings] = useState<RestaurantSettings>(defaultSettings);
+  const [isLoading, setIsLoading] = useState(true);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const loadSettings = async () => {
       try {
-        console.log('useRestaurantSettings: Loading settings...');
         const loadedSettings = await getRestaurantSettings();
-        console.log('useRestaurantSettings: Settings loaded:', loadedSettings);
         setSettings(loadedSettings);
       } catch (error) {
-        console.error('useRestaurantSettings: Error loading settings:', error);
+        console.error('Error loading settings:', error);
         setSettings(defaultSettings);
       } finally {
         setIsLoading(false);
@@ -156,7 +136,6 @@ export const useRestaurantSettings = () => {
 
     // Listen for settings updates
     const handleSettingsUpdate = (event: CustomEvent) => {
-      console.log('useRestaurantSettings: Settings update event received:', event.detail);
       setSettings(event.detail);
     };
 

@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { getAllDatabaseOrders, type OrderWithItems } from '@/services/databaseOrderService';
+import { getAllDatabaseOrders } from '@/services/databaseOrderService';
 import AnimatedSection from '@/components/animations/AnimatedSection';
 
 interface UserProfile {
@@ -83,10 +83,6 @@ const Account = () => {
     user && order.customer_email === user.email
   );
 
-  const handleEditProfile = () => {
-    setIsEditing(true);
-  };
-
   const handleSaveProfile = async () => {
     if (!user) return;
 
@@ -118,11 +114,6 @@ const Account = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleCancelEdit = () => {
-    setEditedProfile(profile);
-    setIsEditing(false);
   };
 
   const handlePasswordUpdate = async () => {
@@ -210,7 +201,7 @@ const Account = () => {
                     <h2 className="text-xl font-semibold">Profile Information</h2>
                     {!isEditing ? (
                       <button
-                        onClick={handleEditProfile}
+                        onClick={() => setIsEditing(true)}
                         className="text-restaurant-green hover:text-restaurant-green/80 transition-colors"
                       >
                         <Edit2 size={18} />
@@ -225,7 +216,10 @@ const Account = () => {
                           <Save size={18} />
                         </button>
                         <button
-                          onClick={handleCancelEdit}
+                          onClick={() => {
+                            setEditedProfile(profile);
+                            setIsEditing(false);
+                          }}
                           className="text-red-600 hover:text-red-800 transition-colors"
                         >
                           <X size={18} />

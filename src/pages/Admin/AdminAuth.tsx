@@ -6,79 +6,69 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { CustomButton } from '@/components/ui/custom-button';
 import { useAuth } from '@/contexts/AuthContext';
-import { Dialog, DialogTitle, DialogDescription, DialogContent } from '@/components/ui/dialog';
+import { supabase } from '@/integrations/supabase/client';
 
 const AdminAuth = () => {
-  const [email, setEmail] = useState('admin@example.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showErrorDialog, setShowErrorDialog] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isAdmin, setIsAdmin } = useAuth();
 
-  // Check if already logged in
   useEffect(() => {
-    const adminToken = localStorage.getItem('adminToken');
-    if (adminToken) {
-      setIsAdmin(true);
+    if (isAdmin) {
       navigate('/admin');
     }
-  }, [navigate, setIsAdmin]);
+  }, [isAdmin, navigate]);
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
-      console.log("Attempting admin login with:", email, "password length:", password.length);
-      
-      // Direct admin credential check without Supabase authentication
-      if (email === 'admin@example.com' && password === 'admin123') {
-        console.log("Admin credentials verified - logging in directly");
-        
-        localStorage.setItem('adminToken', 'mock-jwt-admin-token');
-        localStorage.setItem('adminUser', JSON.stringify({ 
-          name: 'Admin User', 
-          email: 'admin@example.com',
-          role: 'Administrator'
-        }));
-        
-        // Set isAdmin state to trigger proper redirect
-        setIsAdmin(true);
-        
-        toast({
-          title: "Admin login successful!",
-          description: "Welcome to the admin dashboard",
-        });
-        
-        navigate('/admin');
-      } else {
-        console.log("Invalid admin credentials provided");
-        setErrorMessage("Invalid admin credentials. Please use admin@example.com and admin123");
-        setShowErrorDialog(true);
-        
-        // Clear any existing admin token if login fails
-        localStorage.removeItem('adminToken');
-        setIsAdmin(false);
+      // Sign in with Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.user) {
+        // Check if user has admin role
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', data.user.id)
+          .eq('role', 'admin')
+          .single();
+
+        if (roleData) {
+          setIsAdmin(true);
+          toast({
+            title: "Admin login successful!",
+            description: "Welcome to the admin dashboard",
+          });
+          navigate('/admin');
+        } else {
+          await supabase.auth.signOut();
+          throw new Error('Access denied. Admin privileges required.');
+        }
       }
     } catch (error: any) {
       console.error("Admin login error:", error);
-      setErrorMessage("An unexpected error occurred during login");
-      setShowErrorDialog(true);
-      
-      // Clear any existing admin token if login fails
-      localStorage.removeItem('adminToken');
-      setIsAdmin(false);
+      toast({
+        title: "Login Failed",
+        description: error.message || "Invalid credentials or insufficient privileges",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const closeErrorDialog = () => {
-    setShowErrorDialog(false);
   };
 
   return (
@@ -132,35 +122,6 @@ const AdminAuth = () => {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 text-restaurant-green focus:ring-restaurant-green border-gray-300 rounded"
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                Remember me
-              </label>
-            </div>
-
-            <div className="text-sm">
-              <button 
-                type="button" 
-                className="text-restaurant-green hover:text-restaurant-green/80"
-                onClick={() => {
-                  toast({
-                    title: "Credentials reminder",
-                    description: "Email: admin@example.com, Password: admin123",
-                  });
-                }}
-              >
-                Forgot password?
-              </button>
-            </div>
-          </div>
-
           <CustomButton
             type="submit"
             className="w-full justify-center"
@@ -179,35 +140,12 @@ const AdminAuth = () => {
           </div>
         </form>
 
-        {/* Hint for testing */}
-        <div className="mt-4 text-center">
-          <p className="text-xs text-gray-500">
-            Use admin@example.com / admin123 to login
+        <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+          <p className="text-sm text-yellow-800">
+            <strong>Note:</strong> Admin access requires proper role assignment in the database.
           </p>
         </div>
       </motion.div>
-      
-      {/* Error Dialog */}
-      <Dialog open={showErrorDialog} onOpenChange={closeErrorDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogTitle className="text-center text-red-500">Login Error</DialogTitle>
-          <DialogDescription className="text-center">
-            {errorMessage || "Invalid login credentials. Please try again."}
-            <div className="mt-4">
-              <p className="text-sm text-gray-600">
-                For testing, use: <br/>
-                Email: admin@example.com <br/>
-                Password: admin123
-              </p>
-            </div>
-          </DialogDescription>
-          <div className="flex justify-center mt-4">
-            <CustomButton onClick={closeErrorDialog}>
-              Try Again
-            </CustomButton>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

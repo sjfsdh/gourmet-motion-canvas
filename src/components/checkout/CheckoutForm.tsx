@@ -1,596 +1,392 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, CreditCard, Truck, MapPin, User, AlertTriangle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { CreditCard, MapPin, User, Mail, Phone, Lock } from 'lucide-react';
+import { CustomButton } from '@/components/ui/custom-button';
 import { useCart } from '@/hooks/useCart';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 import { createDatabaseOrder } from '@/services/databaseOrderService';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRestaurantSettings } from '@/services/settingsService';
 
-interface CheckoutFormData {
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  address: string;
-  city: string;
-  zipCode: string;
-  paymentMethod: 'card' | 'cash' | 'demo';
-  deliveryMethod: 'delivery' | 'pickup';
-  notes: string;
-  cardNumber: string;
-  expiryDate: string;
-  cvv: string;
+interface CheckoutFormProps {
+  subtotal: number;
+  tax: number;
+  total: number;
 }
 
-const CheckoutForm = () => {
-  const { cart, cartTotal, clearCart } = useCart();
+const CheckoutForm: React.FC<CheckoutFormProps> = ({ subtotal, tax, total }) => {
+  const { cart, clearCart } = useCart();
+  const { user } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [orderPlaced, setOrderPlaced] = useState(false);
-  const [orderId, setOrderId] = useState<number | null>(null);
-  const { settings } = useRestaurantSettings();
-
-  // Get configurable rates from settings (default to 0)
-  const taxRate = 0; // Set to 0 as requested
-  const deliveryFee = 0; // Set to 0 as requested
-
-  console.log('CheckoutForm - Current cart:', cart);
-  console.log('CheckoutForm - Cart total:', cartTotal);
-  console.log('CheckoutForm - Cart length:', cart.length);
-
-  const [formData, setFormData] = useState<CheckoutFormData>({
-    customerName: '',
-    customerEmail: '',
-    customerPhone: '',
+  const navigate = useNavigate();
+  
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [formData, setFormData] = useState({
+    email: user?.email || '',
+    firstName: '',
+    lastName: '',
+    phone: '',
     address: '',
     city: '',
     zipCode: '',
-    paymentMethod: 'demo',
-    deliveryMethod: 'delivery',
-    notes: '',
-    cardNumber: '',
-    expiryDate: '',
-    cvv: ''
+    cardNumber: '4242424242424242',
+    expiryDate: '12/25',
+    cvv: '123',
+    paymentMethod: 'card'
   });
 
-  const [errors, setErrors] = useState<Partial<CheckoutFormData>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const createOrderMutation = useMutation({
-    mutationFn: createDatabaseOrder,
-    onSuccess: (order) => {
-      console.log('Order created successfully:', order);
-      queryClient.invalidateQueries({ queryKey: ['databaseOrders'] });
-      queryClient.invalidateQueries({ queryKey: ['orderStats'] });
-      setOrderId(order.id);
-      setOrderPlaced(true);
-      clearCart();
-      toast({
-        title: "Order Placed Successfully!",
-        description: `Your order #${order.id} has been confirmed and saved to the database.`,
-      });
-    },
-    onError: (error) => {
-      console.error('Order creation error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to place order. Please try again.",
-        variant: "destructive"
-      });
-    }
-  });
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
 
-  const validateForm = (): boolean => {
-    const newErrors: Partial<CheckoutFormData> = {};
-
-    // Check if cart is empty first
-    if (!cart || cart.length === 0) {
-      toast({
-        title: "Cart is Empty",
-        description: "Please add items to your cart before checkout.",
-        variant: "destructive"
-      });
-      return false;
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Valid email is required';
     }
 
-    // Basic validation - ALL FIELDS REQUIRED
-    if (!formData.customerName.trim()) {
-      newErrors.customerName = 'Full name is required';
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = 'First name is required';
     }
-    
-    if (!formData.customerEmail.trim()) {
-      newErrors.customerEmail = 'Email is required';
-    } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.customerEmail)) {
-        newErrors.customerEmail = 'Please enter a valid email address';
-      }
+
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = 'Last name is required';
     }
-    
-    if (!formData.customerPhone.trim()) {
-      newErrors.customerPhone = 'Phone number is required';
+
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Phone number is required';
     }
-    
-    // Address validation - required for both delivery and pickup
+
     if (!formData.address.trim()) {
       newErrors.address = 'Address is required';
     }
+
     if (!formData.city.trim()) {
       newErrors.city = 'City is required';
     }
+
     if (!formData.zipCode.trim()) {
       newErrors.zipCode = 'ZIP code is required';
     }
 
-    // Payment validation
-    if (formData.paymentMethod === 'card') {
-      if (!formData.cardNumber.trim()) {
-        newErrors.cardNumber = 'Card number is required';
-      } else if (formData.cardNumber.replace(/\s/g, '') !== '4242424242424242') {
-        newErrors.cardNumber = 'For demo, use: 4242 4242 4242 4242';
-      }
-      
-      if (!formData.expiryDate.trim()) {
-        newErrors.expiryDate = 'Expiry date is required';
-      } else if (formData.expiryDate !== '12/34') {
-        newErrors.expiryDate = 'For demo, use: 12/34';
-      }
-      
-      if (!formData.cvv.trim()) {
-        newErrors.cvv = 'CVV is required';
-      } else if (formData.cvv !== '123') {
-        newErrors.cvv = 'For demo, use: 123';
-      }
+    if (cart.length === 0) {
+      newErrors.cart = 'Cart cannot be empty';
     }
 
     setErrors(newErrors);
-    const hasErrors = Object.keys(newErrors).length > 0;
-    
-    if (hasErrors) {
-      console.log('Form validation errors:', newErrors);
-    }
-    
-    return !hasErrors;
+    return Object.keys(newErrors).length === 0;
   };
 
-  const handleInputChange = (field: keyof CheckoutFormData, value: string) => {
+  const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
+      setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('Form submission started');
-    console.log('Current cart at submit:', cart);
-    console.log('Form data at submit:', formData);
-    
-    // Prevent submission if cart is empty
-    if (!cart || cart.length === 0) {
-      toast({
-        title: "Cart is Empty",
-        description: "Please add items to your cart before checkout.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Validate form - this will show toast if validation fails
     if (!validateForm()) {
       toast({
-        title: "Form Validation Error",
-        description: "Please fill in all required fields correctly.",
+        title: "Please fix the errors",
+        description: "Check all required fields and try again.",
         variant: "destructive"
       });
       return;
     }
 
-    const currentDeliveryFee = formData.deliveryMethod === 'delivery' ? deliveryFee : 0;
-    const tax = cartTotal * taxRate;
-    const finalTotal = cartTotal + currentDeliveryFee + tax;
+    setIsProcessing(true);
 
-    const orderData = {
-      customer_name: formData.customerName.trim(),
-      customer_email: formData.customerEmail.trim(),
-      customer_phone: formData.customerPhone.trim(),
-      total: finalTotal,
-      status: 'pending' as const,
-      payment_status: formData.paymentMethod === 'demo' ? 'paid' as const : 'pending' as const,
-      payment_method: formData.paymentMethod,
-      address: `${formData.address.trim()}, ${formData.city.trim()}, ${formData.zipCode.trim()}`,
-      items: cart.map(item => ({
-        menu_item_id: item.id,
-        quantity: item.quantity,
-        price: item.price
-      }))
-    };
+    try {
+      // Create order in database
+      const orderData = {
+        customer_name: `${formData.firstName} ${formData.lastName}`,
+        customer_email: formData.email,
+        customer_phone: formData.phone,
+        total: total,
+        status: 'confirmed' as const,
+        payment_status: 'paid' as const,
+        payment_method: formData.paymentMethod,
+        address: `${formData.address}, ${formData.city}, ${formData.zipCode}`,
+        items: cart.map(item => ({
+          menu_item_id: item.id,
+          quantity: item.quantity,
+          price: item.price
+        }))
+      };
 
-    console.log('Creating order with data:', orderData);
-    createOrderMutation.mutate(orderData);
+      await createDatabaseOrder(orderData);
+      
+      // Clear cart after successful order
+      await clearCart();
+
+      toast({
+        title: "Order Placed Successfully!",
+        description: "Thank you for your order. You'll receive a confirmation email shortly.",
+      });
+
+      // Redirect to success page
+      navigate('/order-success');
+
+    } catch (error: any) {
+      console.error('Order creation error:', error);
+      toast({
+        title: "Order Failed",
+        description: error.message || "There was an error processing your order. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  // Show message if cart is empty
-  if (!cart || cart.length === 0) {
+  if (cart.length === 0) {
     return (
-      <div className="max-w-2xl mx-auto p-6">
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-          <h2 className="text-2xl font-bold mb-4">Your Cart is Empty</h2>
-          <p className="text-gray-600 mb-6">
-            Please add some items to your cart before proceeding to checkout.
-          </p>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => window.location.href = '/menu'}
-            className="bg-restaurant-green text-white px-8 py-3 rounded-lg hover:bg-restaurant-green/90"
-          >
-            Browse Menu
-          </motion.button>
-        </div>
+      <div className="text-center py-8">
+        <p className="text-gray-600 mb-4">Your cart is empty</p>
+        <CustomButton onClick={() => navigate('/menu')}>
+          Browse Menu
+        </CustomButton>
       </div>
     );
   }
-
-  if (orderPlaced) {
-    return (
-      <div className="max-w-2xl mx-auto p-6">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-lg shadow-lg p-8 text-center"
-        >
-          <div className="w-20 h-20 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-6">
-            <Check size={40} className="text-green-600" />
-          </div>
-          <h2 className="text-2xl font-bold mb-4">Order Confirmed!</h2>
-          <p className="text-gray-600 mb-4">
-            Thank you for your order. Your order #{orderId} has been successfully placed and saved to our system.
-          </p>
-          <p className="text-gray-600 mb-6">
-            Estimated {formData.deliveryMethod === 'delivery' ? 'delivery' : 'pickup'} time: 
-            {formData.deliveryMethod === 'delivery' ? ' 35-45 minutes' : ' 15-20 minutes'}
-          </p>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => window.location.href = '/menu'}
-            className="bg-restaurant-green text-white px-8 py-3 rounded-lg hover:bg-restaurant-green/90"
-          >
-            Continue Shopping
-          </motion.button>
-        </motion.div>
-      </div>
-    );
-  }
-
-  const currentDeliveryFee = formData.deliveryMethod === 'delivery' ? deliveryFee : 0;
-  const tax = cartTotal * taxRate;
-  const total = cartTotal + currentDeliveryFee + tax;
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-8">Checkout</h1>
-      
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Form Section */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Customer Information */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-4 flex items-center">
-              <User className="mr-2" />
-              Customer Information
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.customerName}
-                  onChange={(e) => handleInputChange('customerName', e.target.value)}
-                  className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.customerName ? 'border-red-500' : 'border-gray-300'}`}
-                  placeholder="Enter your full name"
-                  required
-                />
-                {errors.customerName && <p className="text-red-500 text-sm mt-1">{errors.customerName}</p>}
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email Address *
-                </label>
-                <input
-                  type="email"
-                  value={formData.customerEmail}
-                  onChange={(e) => handleInputChange('customerEmail', e.target.value)}
-                  className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.customerEmail ? 'border-red-500' : 'border-gray-300'}`}
-                  placeholder="Enter your email"
-                  required
-                />
-                {errors.customerEmail && <p className="text-red-500 text-sm mt-1">{errors.customerEmail}</p>}
-              </div>
-              
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone Number *
-                </label>
-                <input
-                  type="tel"
-                  value={formData.customerPhone}
-                  onChange={(e) => handleInputChange('customerPhone', e.target.value)}
-                  className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.customerPhone ? 'border-red-500' : 'border-gray-300'}`}
-                  placeholder="Enter your phone number"
-                  required
-                />
-                {errors.customerPhone && <p className="text-red-500 text-sm mt-1">{errors.customerPhone}</p>}
-              </div>
-            </div>
+    <motion.form 
+      onSubmit={handleSubmit}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="space-y-6"
+    >
+      {/* Contact Information */}
+      <div className="bg-white p-6 rounded-lg shadow-sm border">
+        <h3 className="text-lg font-semibold mb-4 flex items-center">
+          <Mail className="mr-2" size={20} />
+          Contact Information
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Email *
+            </label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => handleInputChange('email', e.target.value)}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${
+                errors.email ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder="your@email.com"
+            />
+            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
           </div>
-
-          {/* Delivery Information */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-4">Delivery Information</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <label className={`cursor-pointer p-4 border-2 rounded-lg ${formData.deliveryMethod === 'delivery' ? 'border-restaurant-green bg-restaurant-green/5' : 'border-gray-200'}`}>
-                <input
-                  type="radio"
-                  name="deliveryMethod"
-                  value="delivery"
-                  checked={formData.deliveryMethod === 'delivery'}
-                  onChange={(e) => handleInputChange('deliveryMethod', e.target.value)}
-                  className="sr-only"
-                />
-                <div className="flex items-center">
-                  <Truck className="mr-3" size={20} />
-                  <div>
-                    <div className="font-medium">Delivery</div>
-                    <div className="text-sm text-gray-500">35-45 min • ${deliveryFee.toFixed(2)}</div>
-                  </div>
-                </div>
-              </label>
-              
-              <label className={`cursor-pointer p-4 border-2 rounded-lg ${formData.deliveryMethod === 'pickup' ? 'border-restaurant-green bg-restaurant-green/5' : 'border-gray-200'}`}>
-                <input
-                  type="radio"
-                  name="deliveryMethod"
-                  value="pickup"
-                  checked={formData.deliveryMethod === 'pickup'}
-                  onChange={(e) => handleInputChange('deliveryMethod', e.target.value)}
-                  className="sr-only"
-                />
-                <div className="flex items-center">
-                  <MapPin className="mr-3" size={20} />
-                  <div>
-                    <div className="font-medium">Pickup</div>
-                    <div className="text-sm text-gray-500">15-20 min • Free</div>
-                  </div>
-                </div>
-              </label>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Address *
-                </label>
-                <input
-                  type="text"
-                  value={formData.address}
-                  onChange={(e) => handleInputChange('address', e.target.value)}
-                  className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.address ? 'border-red-500' : 'border-gray-300'}`}
-                  placeholder="Street address"
-                  required
-                />
-                {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  City *
-                </label>
-                <input
-                  type="text"
-                  value={formData.city}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                  className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.city ? 'border-red-500' : 'border-gray-300'}`}
-                  placeholder="City"
-                  required
-                />
-                {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city}</p>}
-              </div>
-              
-              <div className="md:col-span-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  ZIP Code *
-                </label>
-                <input
-                  type="text"
-                  value={formData.zipCode}
-                  onChange={(e) => handleInputChange('zipCode', e.target.value)}
-                  className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.zipCode ? 'border-red-500' : 'border-gray-300'}`}
-                  placeholder="ZIP"
-                  required
-                />
-                {errors.zipCode && <p className="text-red-500 text-sm mt-1">{errors.zipCode}</p>}
-              </div>
-            </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Phone *
+            </label>
+            <input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => handleInputChange('phone', e.target.value)}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${
+                errors.phone ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder="(555) 123-4567"
+            />
+            {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
           </div>
+        </div>
+      </div>
 
-          {/* Payment Method */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-4 flex items-center">
-              <CreditCard className="mr-2" />
-              Payment Method
-            </h2>
-            
-            <div className="space-y-3 mb-4">
-              <label className={`cursor-pointer p-4 border-2 rounded-lg flex items-center ${formData.paymentMethod === 'demo' ? 'border-restaurant-green bg-restaurant-green/5' : 'border-gray-200'}`}>
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="demo"
-                  checked={formData.paymentMethod === 'demo'}
-                  onChange={(e) => handleInputChange('paymentMethod', e.target.value)}
-                  className="mr-3"
-                />
-                <div>
-                  <div className="font-medium">Demo Payment (Testing) - RECOMMENDED</div>
-                  <div className="text-sm text-gray-500">Use this for testing - no real payment required</div>
-                </div>
-              </label>
-              
-              <label className={`cursor-pointer p-4 border-2 rounded-lg flex items-center ${formData.paymentMethod === 'card' ? 'border-restaurant-green bg-restaurant-green/5' : 'border-gray-200'}`}>
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="card"
-                  checked={formData.paymentMethod === 'card'}
-                  onChange={(e) => handleInputChange('paymentMethod', e.target.value)}
-                  className="mr-3"
-                />
-                <div>
-                  <div className="font-medium">Credit Card (Demo)</div>
-                  <div className="text-sm text-gray-500">Use demo card: 4242 4242 4242 4242</div>
-                </div>
-              </label>
-              
-              <label className={`cursor-pointer p-4 border-2 rounded-lg flex items-center ${formData.paymentMethod === 'cash' ? 'border-restaurant-green bg-restaurant-green/5' : 'border-gray-200'}`}>
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="cash"
-                  checked={formData.paymentMethod === 'cash'}
-                  onChange={(e) => handleInputChange('paymentMethod', e.target.value)}
-                  className="mr-3"
-                />
-                <div>
-                  <div className="font-medium">Cash on {formData.deliveryMethod === 'delivery' ? 'Delivery' : 'Pickup'}</div>
-                  <div className="text-sm text-gray-500">Pay when you receive your order</div>
-                </div>
-              </label>
-            </div>
-
-            {formData.paymentMethod === 'card' && (
-              <div className="space-y-4">
-                <div className="bg-blue-50 p-4 rounded-md border border-blue-200">
-                  <div className="flex items-center text-blue-800 text-sm font-medium">
-                    <AlertTriangle size={16} className="mr-2" />
-                    Demo Card Details for Testing:
-                  </div>
-                  <div className="mt-2 text-blue-700 text-sm">
-                    <strong>Card Number:</strong> 4242 4242 4242 4242<br/>
-                    <strong>Expiry:</strong> 12/34<br/>
-                    <strong>CVV:</strong> 123
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Card Number *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.cardNumber}
-                      onChange={(e) => handleInputChange('cardNumber', e.target.value)}
-                      className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.cardNumber ? 'border-red-500' : 'border-gray-300'}`}
-                      placeholder="4242 4242 4242 4242"
-                    />
-                    {errors.cardNumber && <p className="text-red-500 text-sm mt-1">{errors.cardNumber}</p>}
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Expiry *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.expiryDate}
-                      onChange={(e) => handleInputChange('expiryDate', e.target.value)}
-                      className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.expiryDate ? 'border-red-500' : 'border-gray-300'}`}
-                      placeholder="12/34"
-                    />
-                    {errors.expiryDate && <p className="text-red-500 text-sm mt-1">{errors.expiryDate}</p>}
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      CVV *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.cvv}
-                      onChange={(e) => handleInputChange('cvv', e.target.value)}
-                      className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.cvv ? 'border-red-500' : 'border-gray-300'}`}
-                      placeholder="123"
-                    />
-                    {errors.cvv && <p className="text-red-500 text-sm mt-1">{errors.cvv}</p>}
-                  </div>
-                </div>
-              </div>
-            )}
+      {/* Delivery Information */}
+      <div className="bg-white p-6 rounded-lg shadow-sm border">
+        <h3 className="text-lg font-semibold mb-4 flex items-center">
+          <MapPin className="mr-2" size={20} />
+          Delivery Information
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              First Name *
+            </label>
+            <input
+              type="text"
+              value={formData.firstName}
+              onChange={(e) => handleInputChange('firstName', e.target.value)}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${
+                errors.firstName ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder="John"
+            />
+            {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>}
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Last Name *
+            </label>
+            <input
+              type="text"
+              value={formData.lastName}
+              onChange={(e) => handleInputChange('lastName', e.target.value)}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${
+                errors.lastName ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder="Doe"
+            />
+            {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>}
           </div>
         </div>
 
-        {/* Order Summary - USING REAL CART DATA */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg shadow-md p-6 sticky top-6">
-            <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-            
-            <div className="space-y-3 mb-4">
-              {cart.map(item => (
-                <div key={item.id} className="flex justify-between items-center">
-                  <div className="flex-1">
-                    <div className="font-medium">{item.name}</div>
-                    <div className="text-sm text-gray-500">{item.quantity} × ${item.price.toFixed(2)}</div>
-                  </div>
-                  <span className="font-medium">${(item.price * item.quantity).toFixed(2)}</span>
-                </div>
-              ))}
-            </div>
-            
-            <div className="border-t pt-4 space-y-2">
-              <div className="flex justify-between">
-                <span>Subtotal</span>
-                <span>${cartTotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Tax ({(taxRate * 100).toFixed(1)}%)</span>
-                <span>${tax.toFixed(2)}</span>
-              </div>
-              {currentDeliveryFee > 0 && (
-                <div className="flex justify-between">
-                  <span>Delivery Fee</span>
-                  <span>${currentDeliveryFee.toFixed(2)}</span>
-                </div>
-              )}
-              <div className="border-t pt-2 flex justify-between font-semibold text-lg">
-                <span>Total</span>
-                <span>${total.toFixed(2)}</span>
-              </div>
-            </div>
-            
-            <button
-              type="submit"
-              disabled={createOrderMutation.isPending || !cart || cart.length === 0}
-              className="w-full bg-restaurant-green text-white py-3 rounded-lg mt-6 hover:bg-restaurant-green/90 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-            >
-              {createOrderMutation.isPending ? 'Placing Order...' : `Place Order - $${total.toFixed(2)}`}
-            </button>
-            
-            <div className="mt-4 text-xs text-gray-500 text-center">
-              <p><strong>Demo Payment:</strong> Select "Demo Payment" option</p>
-              <p><strong>Demo Card:</strong> 4242 4242 4242 4242 | 12/34 | 123</p>
-            </div>
+        <div className="mt-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Address *
+          </label>
+          <input
+            type="text"
+            value={formData.address}
+            onChange={(e) => handleInputChange('address', e.target.value)}
+            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${
+              errors.address ? 'border-red-500' : 'border-gray-300'
+            }`}
+            placeholder="123 Main Street"
+          />
+          {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              City *
+            </label>
+            <input
+              type="text"
+              value={formData.city}
+              onChange={(e) => handleInputChange('city', e.target.value)}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${
+                errors.city ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder="New York"
+            />
+            {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city}</p>}
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              ZIP Code *
+            </label>
+            <input
+              type="text"
+              value={formData.zipCode}
+              onChange={(e) => handleInputChange('zipCode', e.target.value)}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${
+                errors.zipCode ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder="10001"
+            />
+            {errors.zipCode && <p className="text-red-500 text-sm mt-1">{errors.zipCode}</p>}
           </div>
         </div>
-      </form>
-    </div>
+      </div>
+
+      {/* Payment Information */}
+      <div className="bg-white p-6 rounded-lg shadow-sm border">
+        <h3 className="text-lg font-semibold mb-4 flex items-center">
+          <CreditCard className="mr-2" size={20} />
+          Payment Information
+        </h3>
+        
+        <div className="mb-4">
+          <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
+            Demo Mode: Using test card details (4242 4242 4242 4242)
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Card Number
+            </label>
+            <input
+              type="text"
+              value={formData.cardNumber}
+              readOnly
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+              placeholder="4242 4242 4242 4242"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Expiry Date
+            </label>
+            <input
+              type="text"
+              value={formData.expiryDate}
+              readOnly
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+              placeholder="MM/YY"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              CVV
+            </label>
+            <input
+              type="text"
+              value={formData.cvv}
+              readOnly
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+              placeholder="123"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Order Summary */}
+      <div className="bg-gray-50 p-6 rounded-lg">
+        <h3 className="text-lg font-semibold mb-4">Order Summary</h3>
+        
+        <div className="space-y-2 mb-4">
+          {cart.map((item) => (
+            <div key={item.id} className="flex justify-between text-sm">
+              <span>{item.quantity}× {item.name}</span>
+              <span>${(item.price * item.quantity).toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+        
+        <div className="border-t pt-4 space-y-2">
+          <div className="flex justify-between">
+            <span>Subtotal</span>
+            <span>${subtotal.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Tax</span>
+            <span>${tax.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between font-bold text-lg">
+            <span>Total</span>
+            <span>${total.toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+
+      <CustomButton
+        type="submit"
+        className="w-full justify-center"
+        disabled={isProcessing}
+      >
+        {isProcessing ? 'Processing...' : `Place Order - $${total.toFixed(2)}`}
+      </CustomButton>
+    </motion.form>
   );
 };
 
