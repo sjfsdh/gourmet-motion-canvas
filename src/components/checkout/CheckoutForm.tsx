@@ -255,7 +255,7 @@ const CheckoutForm = () => {
           >
             Continue Shopping
           </motion.button>
-        </div>
+        </motion.div>
       </div>
     );
   }
