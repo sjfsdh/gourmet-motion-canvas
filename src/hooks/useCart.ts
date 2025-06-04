@@ -29,7 +29,7 @@ export const useCart = () => {
     try {
       const cartKey = getCartStorageKey();
       const savedCart = localStorage.getItem(cartKey);
-      console.log('Loading cart from localStorage:', cartKey, savedCart);
+      console.log('useCart: Loading cart from localStorage:', cartKey, savedCart);
       
       if (savedCart) {
         const parsedCart = JSON.parse(savedCart);
@@ -41,17 +41,17 @@ export const useCart = () => {
             typeof item.quantity === 'number' && item.quantity > 0
           );
           setCart(validCart);
-          console.log('Cart loaded:', validCart);
+          console.log('useCart: Cart loaded successfully:', validCart);
         } else {
-          console.log('Invalid cart data, resetting cart');
+          console.log('useCart: Invalid cart data, resetting cart');
           setCart([]);
         }
       } else {
-        console.log('No saved cart found, starting with empty cart');
+        console.log('useCart: No saved cart found, starting with empty cart');
         setCart([]);
       }
     } catch (error) {
-      console.error('Error parsing cart from localStorage:', error);
+      console.error('useCart: Error parsing cart from localStorage:', error);
       setCart([]);
       localStorage.removeItem(getCartStorageKey());
     }
@@ -63,7 +63,7 @@ export const useCart = () => {
   useEffect(() => {
     if (!isLoading) {
       const cartKey = getCartStorageKey();
-      console.log('Saving cart to localStorage:', cartKey, cart);
+      console.log('useCart: Saving cart to localStorage:', cartKey, cart);
       localStorage.setItem(cartKey, JSON.stringify(cart));
     }
   }, [cart, isLoading, user]);
@@ -71,7 +71,7 @@ export const useCart = () => {
   // Add item to cart
   const addToCart = (item: any, quantity = 1) => {
     if (!item || !item.id) {
-      console.error('Invalid item passed to addToCart:', item);
+      console.error('useCart: Invalid item passed to addToCart:', item);
       toast({
         title: "Error",
         description: "Invalid item. Please try again.",
@@ -80,7 +80,7 @@ export const useCart = () => {
       return;
     }
     
-    console.log('Adding item to cart:', item, 'quantity:', quantity);
+    console.log('useCart: Adding item to cart:', item, 'quantity:', quantity);
     
     const cartItem: CartItem = {
       id: Number(item.id),
@@ -100,14 +100,14 @@ export const useCart = () => {
         // Item exists, update quantity
         updatedCart = [...currentCart];
         updatedCart[existingItemIndex].quantity += Number(quantity);
-        console.log('Updated existing item:', updatedCart[existingItemIndex]);
+        console.log('useCart: Updated existing item:', updatedCart[existingItemIndex]);
       } else {
         // Item doesn't exist, add new item
         updatedCart = [...currentCart, cartItem];
-        console.log('Added new item to cart:', cartItem);
+        console.log('useCart: Added new item to cart:', cartItem);
       }
       
-      console.log('Updated cart state:', updatedCart);
+      console.log('useCart: Updated cart state:', updatedCart);
       return updatedCart;
     });
     
@@ -120,10 +120,10 @@ export const useCart = () => {
   
   // Remove item from cart
   const removeFromCart = (id: number) => {
-    console.log('Removing item from cart:', id);
+    console.log('useCart: Removing item from cart:', id);
     setCart(currentCart => {
       const updatedCart = currentCart.filter(item => item.id !== Number(id));
-      console.log('Cart after removal:', updatedCart);
+      console.log('useCart: Cart after removal:', updatedCart);
       return updatedCart;
     });
     
@@ -136,7 +136,7 @@ export const useCart = () => {
   
   // Update item quantity
   const updateQuantity = (id: number, quantity: number) => {
-    console.log('Updating quantity for item:', id, 'to:', quantity);
+    console.log('useCart: Updating quantity for item:', id, 'to:', quantity);
     
     if (quantity < 1) {
       removeFromCart(id);
@@ -147,14 +147,14 @@ export const useCart = () => {
       const updatedCart = currentCart.map(item => 
         item.id === Number(id) ? { ...item, quantity: Number(quantity) } : item
       );
-      console.log('Cart after quantity update:', updatedCart);
+      console.log('useCart: Cart after quantity update:', updatedCart);
       return updatedCart;
     });
   };
   
   // Clear entire cart
   const clearCart = () => {
-    console.log('Clearing entire cart');
+    console.log('useCart: Clearing entire cart');
     setCart([]);
     
     toast({
@@ -170,7 +170,11 @@ export const useCart = () => {
   // Calculate total number of items
   const itemCount = cart.reduce((sum, item) => sum + Number(item.quantity), 0);
   
-  console.log('Current cart state:', { cart, cartTotal, itemCount });
+  console.log('useCart: Current cart state summary:', { 
+    cartLength: cart.length, 
+    cartTotal: cartTotal.toFixed(2), 
+    itemCount 
+  });
   
   return {
     cart,

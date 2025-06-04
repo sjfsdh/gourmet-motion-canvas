@@ -29,6 +29,10 @@ const CheckoutForm = () => {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderId, setOrderId] = useState<number | null>(null);
 
+  console.log('CheckoutForm - Current cart:', cart);
+  console.log('CheckoutForm - Cart total:', cartTotal);
+  console.log('CheckoutForm - Cart length:', cart.length);
+
   const [formData, setFormData] = useState<CheckoutFormData>({
     customerName: '',
     customerEmail: '',
@@ -73,6 +77,16 @@ const CheckoutForm = () => {
   const validateForm = (): boolean => {
     const newErrors: Partial<CheckoutFormData> = {};
 
+    // Check if cart is empty first
+    if (!cart || cart.length === 0) {
+      toast({
+        title: "Cart is Empty",
+        description: "Please add items to your cart before checkout.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
     // Basic validation - ALL FIELDS REQUIRED
     if (!formData.customerName.trim()) {
       newErrors.customerName = 'Full name is required';
@@ -91,7 +105,7 @@ const CheckoutForm = () => {
       newErrors.customerPhone = 'Phone number is required';
     }
     
-    // Delivery validation - ALWAYS REQUIRED NOW
+    // Address validation - required for both delivery and pickup
     if (!formData.address.trim()) {
       newErrors.address = 'Address is required';
     }
@@ -112,15 +126,25 @@ const CheckoutForm = () => {
       
       if (!formData.expiryDate.trim()) {
         newErrors.expiryDate = 'Expiry date is required';
+      } else if (formData.expiryDate !== '12/34') {
+        newErrors.expiryDate = 'For demo, use: 12/34';
       }
       
       if (!formData.cvv.trim()) {
         newErrors.cvv = 'CVV is required';
+      } else if (formData.cvv !== '123') {
+        newErrors.cvv = 'For demo, use: 123';
       }
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const hasErrors = Object.keys(newErrors).length > 0;
+    
+    if (hasErrors) {
+      console.log('Form validation errors:', newErrors);
+    }
+    
+    return !hasErrors;
   };
 
   const handleInputChange = (field: keyof CheckoutFormData, value: string) => {
@@ -135,10 +159,11 @@ const CheckoutForm = () => {
     e.preventDefault();
     
     console.log('Form submission started');
-    console.log('Current cart:', cart);
-    console.log('Form data:', formData);
+    console.log('Current cart at submit:', cart);
+    console.log('Form data at submit:', formData);
     
-    if (cart.length === 0) {
+    // Prevent submission if cart is empty
+    if (!cart || cart.length === 0) {
       toast({
         title: "Cart is Empty",
         description: "Please add items to your cart before checkout.",
@@ -147,8 +172,8 @@ const CheckoutForm = () => {
       return;
     }
 
+    // Validate form - this will show toast if validation fails
     if (!validateForm()) {
-      console.log('Form validation failed:', errors);
       toast({
         title: "Form Validation Error",
         description: "Please fill in all required fields correctly.",
@@ -162,14 +187,14 @@ const CheckoutForm = () => {
     const finalTotal = cartTotal + deliveryFee + tax;
 
     const orderData = {
-      customer_name: formData.customerName,
-      customer_email: formData.customerEmail,
-      customer_phone: formData.customerPhone,
+      customer_name: formData.customerName.trim(),
+      customer_email: formData.customerEmail.trim(),
+      customer_phone: formData.customerPhone.trim(),
       total: finalTotal,
       status: 'pending' as const,
       payment_status: formData.paymentMethod === 'demo' ? 'paid' as const : 'pending' as const,
       payment_method: formData.paymentMethod,
-      address: `${formData.address}, ${formData.city}, ${formData.zipCode}`,
+      address: `${formData.address.trim()}, ${formData.city.trim()}, ${formData.zipCode.trim()}`,
       items: cart.map(item => ({
         menu_item_id: item.id,
         quantity: item.quantity,
@@ -180,6 +205,28 @@ const CheckoutForm = () => {
     console.log('Creating order with data:', orderData);
     createOrderMutation.mutate(orderData);
   };
+
+  // Show message if cart is empty
+  if (!cart || cart.length === 0) {
+    return (
+      <div className="max-w-2xl mx-auto p-6">
+        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+          <h2 className="text-2xl font-bold mb-4">Your Cart is Empty</h2>
+          <p className="text-gray-600 mb-6">
+            Please add some items to your cart before proceeding to checkout.
+          </p>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => window.location.href = '/menu'}
+            className="bg-restaurant-green text-white px-8 py-3 rounded-lg hover:bg-restaurant-green/90"
+          >
+            Browse Menu
+          </motion.button>
+        </div>
+      </div>
+    );
+  }
 
   if (orderPlaced) {
     return (
@@ -208,7 +255,7 @@ const CheckoutForm = () => {
           >
             Continue Shopping
           </motion.button>
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -228,13 +275,13 @@ const CheckoutForm = () => {
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4 flex items-center">
               <User className="mr-2" />
-              Customer Information *
+              Customer Information
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name * <span className="text-red-500">Required</span>
+                  Full Name *
                 </label>
                 <input
                   type="text"
@@ -249,7 +296,7 @@ const CheckoutForm = () => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email Address * <span className="text-red-500">Required</span>
+                  Email Address *
                 </label>
                 <input
                   type="email"
@@ -264,7 +311,7 @@ const CheckoutForm = () => {
               
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone Number * <span className="text-red-500">Required</span>
+                  Phone Number *
                 </label>
                 <input
                   type="tel"
@@ -279,9 +326,9 @@ const CheckoutForm = () => {
             </div>
           </div>
 
-          {/* Delivery Information - ALWAYS REQUIRED */}
+          {/* Delivery Information */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-4">Delivery Information *</h2>
+            <h2 className="text-xl font-semibold mb-4">Delivery Information</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <label className={`cursor-pointer p-4 border-2 rounded-lg ${formData.deliveryMethod === 'delivery' ? 'border-restaurant-green bg-restaurant-green/5' : 'border-gray-200'}`}>
@@ -324,7 +371,7 @@ const CheckoutForm = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Address * <span className="text-red-500">Required</span>
+                  Address *
                 </label>
                 <input
                   type="text"
@@ -339,7 +386,7 @@ const CheckoutForm = () => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  City * <span className="text-red-500">Required</span>
+                  City *
                 </label>
                 <input
                   type="text"
@@ -354,7 +401,7 @@ const CheckoutForm = () => {
               
               <div className="md:col-span-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  ZIP Code * <span className="text-red-500">Required</span>
+                  ZIP Code *
                 </label>
                 <input
                   type="text"
@@ -373,7 +420,7 @@ const CheckoutForm = () => {
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4 flex items-center">
               <CreditCard className="mr-2" />
-              Payment Method *
+              Payment Method
             </h2>
             
             <div className="space-y-3 mb-4">
@@ -432,7 +479,7 @@ const CheckoutForm = () => {
                   </div>
                   <div className="mt-2 text-blue-700 text-sm">
                     <strong>Card Number:</strong> 4242 4242 4242 4242<br/>
-                    <strong>Expiry:</strong> 12/28<br/>
+                    <strong>Expiry:</strong> 12/34<br/>
                     <strong>CVV:</strong> 123
                   </div>
                 </div>
@@ -460,7 +507,7 @@ const CheckoutForm = () => {
                       value={formData.expiryDate}
                       onChange={(e) => handleInputChange('expiryDate', e.target.value)}
                       className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green ${errors.expiryDate ? 'border-red-500' : 'border-gray-300'}`}
-                      placeholder="12/28"
+                      placeholder="12/34"
                     />
                     {errors.expiryDate && <p className="text-red-500 text-sm mt-1">{errors.expiryDate}</p>}
                   </div>
@@ -484,16 +531,19 @@ const CheckoutForm = () => {
           </div>
         </div>
 
-        {/* Order Summary */}
+        {/* Order Summary - USING REAL CART DATA */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow-md p-6 sticky top-6">
             <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
             
             <div className="space-y-3 mb-4">
               {cart.map(item => (
-                <div key={item.id} className="flex justify-between">
-                  <span>{item.quantity}x {item.name}</span>
-                  <span>${(item.price * item.quantity).toFixed(2)}</span>
+                <div key={item.id} className="flex justify-between items-center">
+                  <div className="flex-1">
+                    <div className="font-medium">{item.name}</div>
+                    <div className="text-sm text-gray-500">{item.quantity} × ${item.price.toFixed(2)}</div>
+                  </div>
+                  <span className="font-medium">${(item.price * item.quantity).toFixed(2)}</span>
                 </div>
               ))}
             </div>
@@ -521,15 +571,15 @@ const CheckoutForm = () => {
             
             <button
               type="submit"
-              disabled={createOrderMutation.isPending || cart.length === 0}
+              disabled={createOrderMutation.isPending || !cart || cart.length === 0}
               className="w-full bg-restaurant-green text-white py-3 rounded-lg mt-6 hover:bg-restaurant-green/90 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
             >
               {createOrderMutation.isPending ? 'Placing Order...' : `Place Order - $${total.toFixed(2)}`}
             </button>
             
             <div className="mt-4 text-xs text-gray-500 text-center">
-              <p>Demo Payment: Use "Demo Payment" option for testing</p>
-              <p>Demo Card: 4242 4242 4242 4242 | 12/28 | 123</p>
+              <p><strong>Demo Payment:</strong> Select "Demo Payment" option</p>
+              <p><strong>Demo Card:</strong> 4242 4242 4242 4242 | 12/34 | 123</p>
             </div>
           </div>
         </div>
