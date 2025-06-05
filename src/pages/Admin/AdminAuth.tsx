@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Shield, Eye, EyeOff, AlertCircle, CheckCircle, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +11,7 @@ const AdminAuth = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [step, setStep] = useState<'login' | 'signup' | 'verify'>('login');
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -75,7 +76,7 @@ const AdminAuth = () => {
         } else if (error.message.includes('Email not confirmed')) {
           toast({
             title: "Email Not Confirmed",
-            description: "Please check your email and confirm your account.",
+            description: "Please check your email and confirm your account first.",
             variant: "destructive"
           });
         } else {
@@ -153,12 +154,18 @@ const AdminAuth = () => {
     try {
       console.log('AdminAuth: Creating admin account for:', formData.email);
       
+      // Get current origin for redirect URL
+      const redirectUrl = `${window.location.origin}/admin/auth`;
+      
       // First, try to sign up the user
       const { data, error } = await supabase.auth.signUp({
         email: formData.email.trim(),
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/admin/auth`
+          emailRedirectTo: redirectUrl,
+          data: {
+            full_name: 'Admin User'
+          }
         }
       });
       
@@ -171,6 +178,7 @@ const AdminAuth = () => {
             description: "An account with this email already exists. Try logging in instead.",
             variant: "destructive"
           });
+          setStep('login');
         } else {
           toast({
             title: "Signup Failed",
@@ -186,14 +194,15 @@ const AdminAuth = () => {
         
         // If user needs email confirmation
         if (!data.session) {
+          setStep('verify');
           toast({
             title: "Check Your Email",
-            description: "Please check your email and confirm your account before logging in.",
+            description: "We've sent you a verification email. Please check your inbox and click the link to verify your account.",
           });
           return;
         }
         
-        // User is signed in, now assign admin role
+        // User is signed in immediately, assign admin role
         const { error: roleError } = await supabase
           .from('user_roles')
           .upsert({
@@ -214,12 +223,11 @@ const AdminAuth = () => {
         console.log('AdminAuth: Admin role assigned successfully');
         
         toast({
-          title: "Admin Account Created",
-          description: "Your admin account has been created successfully! You can now log in.",
+          title: "Admin Account Created Successfully!",
+          description: "You can now access the admin panel.",
         });
         
-        // Clear form
-        setFormData({ email: '', password: '' });
+        navigate('/admin/dashboard');
       }
       
     } catch (error) {
@@ -234,6 +242,54 @@ const AdminAuth = () => {
     }
   };
 
+  if (step === 'verify') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-lg shadow-xl w-full max-w-md p-8 text-center"
+        >
+          <div className="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+            <Mail className="text-blue-600" size={32} />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-800 mb-4">Check Your Email</h1>
+          <p className="text-gray-600 mb-6">
+            We've sent a verification email to <strong>{formData.email}</strong>. 
+            Please check your inbox and click the verification link to complete your admin account setup.
+          </p>
+          
+          <div className="space-y-3">
+            <CustomButton
+              onClick={() => setStep('login')}
+              variant="outline"
+              className="w-full"
+            >
+              Back to Login
+            </CustomButton>
+            
+            <CustomButton
+              onClick={handleCreateAdminAccount}
+              disabled={isLoading}
+              className="w-full"
+            >
+              {isLoading ? 'Resending...' : 'Resend Verification Email'}
+            </CustomButton>
+          </div>
+          
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => navigate('/')}
+              className="text-gray-500 hover:text-gray-700 text-sm"
+            >
+              ← Back to Website
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
       <motion.div
@@ -247,6 +303,29 @@ const AdminAuth = () => {
           </div>
           <h1 className="text-2xl font-bold text-gray-800">Admin Panel</h1>
           <p className="text-gray-600 mt-2">Secure access to restaurant management</p>
+        </div>
+
+        <div className="flex mb-6">
+          <button
+            onClick={() => setStep('login')}
+            className={`flex-1 py-2 px-4 text-sm font-medium rounded-l-md ${
+              step === 'login' 
+                ? 'bg-restaurant-green text-white' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Login
+          </button>
+          <button
+            onClick={() => setStep('signup')}
+            className={`flex-1 py-2 px-4 text-sm font-medium rounded-r-md ${
+              step === 'signup' 
+                ? 'bg-restaurant-green text-white' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Create Admin
+          </button>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
@@ -297,47 +376,42 @@ const AdminAuth = () => {
           </div>
 
           <div className="space-y-3">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-restaurant-green text-white py-3 px-4 rounded-md font-semibold hover:bg-restaurant-green/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              {isLoading ? 'Signing In...' : 'Sign In as Admin'}
-            </motion.button>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">or</span>
-              </div>
-            </div>
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="button"
-              onClick={handleCreateAdminAccount}
-              disabled={isLoading}
-              className="w-full bg-blue-600 text-white py-3 px-4 rounded-md font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              {isLoading ? 'Creating Account...' : 'Create Admin Account'}
-            </motion.button>
+            {step === 'login' ? (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-restaurant-green text-white py-3 px-4 rounded-md font-semibold hover:bg-restaurant-green/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                {isLoading ? 'Signing In...' : 'Sign In as Admin'}
+              </motion.button>
+            ) : (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                type="button"
+                onClick={handleCreateAdminAccount}
+                disabled={isLoading}
+                className="w-full bg-blue-600 text-white py-3 px-4 rounded-md font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                {isLoading ? 'Creating Account...' : 'Create Admin Account'}
+              </motion.button>
+            )}
           </div>
         </form>
 
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-          <div className="flex items-start">
-            <AlertCircle className="text-blue-600 mr-2 mt-0.5" size={16} />
-            <div className="text-sm text-blue-800">
-              <p className="font-medium mb-1">First Time Setup:</p>
-              <p>Enter your desired admin email and password, then click "Create Admin Account" to set up your admin credentials.</p>
+        {step === 'signup' && (
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+            <div className="flex items-start">
+              <AlertCircle className="text-blue-600 mr-2 mt-0.5" size={16} />
+              <div className="text-sm text-blue-800">
+                <p className="font-medium mb-1">Admin Account Setup:</p>
+                <p>Enter your email and password to create an admin account. You'll receive a verification email to complete the setup.</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="mt-6 text-center">
           <button

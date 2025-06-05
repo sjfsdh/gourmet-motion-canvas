@@ -213,6 +213,7 @@ export type Database = {
       settings: {
         Row: {
           created_at: string | null
+          delivery_fee: number | null
           id: number
           opening_hours: string | null
           restaurant_address: string | null
@@ -223,6 +224,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          delivery_fee?: number | null
           id?: number
           opening_hours?: string | null
           restaurant_address?: string | null
@@ -233,6 +235,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          delivery_fee?: number | null
           id?: number
           opening_hours?: string | null
           restaurant_address?: string | null
