@@ -264,10 +264,10 @@ const CheckoutForm = () => {
     }
   };
 
+  // Calculate totals using actual cart data and settings
   const subtotal: number = cartTotal;
-  const tax: number = 0; // No tax as requested
-  const delivery: number = 0; // Will be configurable from admin panel later
-  const total: number = subtotal + tax + delivery;
+  const deliveryFee: number = Number(settings?.delivery_fee || 0);
+  const total: number = subtotal + deliveryFee;
 
   if (cart.length === 0) {
     return (
@@ -567,7 +567,7 @@ const CheckoutForm = () => {
             </form>
           </div>
 
-          {/* Order Summary */}
+          {/* Order Summary - Now showing actual cart items */}
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h3 className="text-xl font-bold text-gray-800 mb-6">Order Summary</h3>
             
@@ -600,7 +600,7 @@ const CheckoutForm = () => {
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Delivery:</span>
-                <span>{delivery === 0 ? 'Free' : `$${delivery.toFixed(2)}`}</span>
+                <span>{deliveryFee === 0 ? 'Free' : `$${deliveryFee.toFixed(2)}`}</span>
               </div>
               <div className="border-t pt-3 flex justify-between text-xl font-bold text-gray-800">
                 <span>Total:</span>
