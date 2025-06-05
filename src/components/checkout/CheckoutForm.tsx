@@ -7,11 +7,13 @@ import { useCart } from '@/hooks/useCart';
 import { useToast } from '@/hooks/use-toast';
 import { CustomButton } from '@/components/ui/custom-button';
 import { createDatabaseOrder } from '@/services/databaseOrderService';
+import { useRestaurantSettings } from '@/services/settingsService';
 
 const CheckoutForm = () => {
   const navigate = useNavigate();
   const { cart, cartTotal, clearCart } = useCart();
   const { toast } = useToast();
+  const { settings } = useRestaurantSettings();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -128,8 +130,8 @@ const CheckoutForm = () => {
   };
 
   const subtotal = cartTotal;
-  const tax = 0; // Set to 0 as requested
-  const delivery = 0; // Set to 0 as requested
+  const tax = 0; // No tax as requested
+  const delivery = 0; // Will be configurable from admin panel later
   const total = subtotal + tax + delivery;
 
   if (cart.length === 0) {
@@ -274,12 +276,12 @@ const CheckoutForm = () => {
                     <input
                       type="radio"
                       name="paymentMethod"
-                      value="paypal"
-                      checked={formData.paymentMethod === 'paypal'}
+                      value="cash"
+                      checked={formData.paymentMethod === 'cash'}
                       onChange={handleInputChange}
                       className="mr-3"
                     />
-                    <span>PayPal (Coming Soon)</span>
+                    <span>Cash on Delivery</span>
                   </label>
                 </div>
 
@@ -345,7 +347,7 @@ const CheckoutForm = () => {
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Delivery:</span>
-                <span>${delivery.toFixed(2)}</span>
+                <span>{delivery === 0 ? 'Free' : `$${delivery.toFixed(2)}`}</span>
               </div>
               <div className="border-t pt-3 flex justify-between text-xl font-bold text-gray-800">
                 <span>Total:</span>
