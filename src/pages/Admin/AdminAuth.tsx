@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Eye, EyeOff, AlertCircle, CheckCircle, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { CustomButton } from '@/components/ui/custom-button';
 
 const AdminAuth = () => {
   const navigate = useNavigate();
