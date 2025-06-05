@@ -21,7 +21,7 @@ export const saveCartToSupabase = async (userId: string, cart: CartItem[]) => {
       .from('user_carts')
       .upsert({
         user_id: userId,
-        cart_data: cart,
+        cart_data: cart as any,
         updated_at: new Date().toISOString()
       });
     
