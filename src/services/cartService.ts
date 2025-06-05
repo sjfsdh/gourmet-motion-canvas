@@ -40,7 +40,7 @@ export const loadCartFromSupabase = async (userId: string): Promise<CartItem[]> 
       .maybeSingle();
     
     if (error || !data) return [];
-    return (data.cart_data as CartItem[]) || [];
+    return (data.cart_data as unknown as CartItem[]) || [];
   } catch (error) {
     console.error('Error loading cart from Supabase:', error);
     return [];
