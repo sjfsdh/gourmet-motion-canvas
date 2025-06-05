@@ -129,10 +129,10 @@ const CheckoutForm = () => {
     }
   };
 
-  const subtotal = cartTotal;
-  const tax = 0; // No tax as requested
-  const delivery = 0; // Will be configurable from admin panel later
-  const total = subtotal + tax + delivery;
+  const subtotal: number = cartTotal;
+  const tax: number = 0; // No tax as requested
+  const delivery: number = 0; // Will be configurable from admin panel later
+  const total: number = subtotal + tax + delivery;
 
   if (cart.length === 0) {
     return (
@@ -340,10 +340,6 @@ const CheckoutForm = () => {
               <div className="flex justify-between text-gray-600">
                 <span>Subtotal:</span>
                 <span>${subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-gray-600">
-                <span>Tax:</span>
-                <span>${tax.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Delivery:</span>
