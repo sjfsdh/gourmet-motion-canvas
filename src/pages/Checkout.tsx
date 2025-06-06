@@ -9,9 +9,17 @@ import AnimatedSection from '@/components/animations/AnimatedSection';
 
 const Checkout = () => {
   const navigate = useNavigate();
-  const { cart, cartTotal } = useCart();
+  const { cart } = useCart();
 
-  // If cart is empty, redirect to menu
+  // All hooks must be called before any conditional logic
+  React.useEffect(() => {
+    // Only redirect if cart has items
+    if (cart.length > 0) {
+      navigate('/checkout-form');
+    }
+  }, [navigate, cart.length]);
+
+  // Conditional rendering after all hooks
   if (cart.length === 0) {
     return (
       <div className="bg-gray-50 min-h-screen flex items-center justify-center">
@@ -28,11 +36,6 @@ const Checkout = () => {
       </div>
     );
   }
-
-  // Redirect to the actual checkout form
-  React.useEffect(() => {
-    navigate('/checkout-form');
-  }, [navigate]);
 
   return (
     <div className="bg-gray-50 min-h-screen flex items-center justify-center">
