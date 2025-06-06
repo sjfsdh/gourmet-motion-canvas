@@ -37,6 +37,7 @@ export const useCart = () => {
         loadedCart = loadCartFromStorage();
       }
       
+      console.log('Loaded cart:', loadedCart);
       setCart(loadedCart);
     } catch (error) {
       console.error('Error loading cart:', error);
@@ -48,6 +49,7 @@ export const useCart = () => {
   
   const saveCart = async (newCart: CartItem[]) => {
     try {
+      console.log('Saving cart:', newCart);
       if (user) {
         await saveCartToSupabase(user.id, newCart);
       } else {
@@ -87,6 +89,7 @@ export const useCart = () => {
       newCart.push(cartItem);
     }
     
+    console.log('Adding to cart. New cart:', newCart);
     setCart(newCart);
     await saveCart(newCart);
     
@@ -99,6 +102,7 @@ export const useCart = () => {
   
   const removeFromCart = async (id: number) => {
     const newCart = cart.filter(item => item.id !== id);
+    console.log('Removing from cart. New cart:', newCart);
     setCart(newCart);
     await saveCart(newCart);
     
@@ -119,11 +123,13 @@ export const useCart = () => {
       item.id === id ? { ...item, quantity } : item
     );
     
+    console.log('Updating quantity. New cart:', newCart);
     setCart(newCart);
     await saveCart(newCart);
   };
   
   const clearCart = async () => {
+    console.log('Clearing cart');
     setCart([]);
     await clearCartService(user?.id);
     
