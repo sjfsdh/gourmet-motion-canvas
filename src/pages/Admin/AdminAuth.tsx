@@ -1,14 +1,18 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Eye, EyeOff, AlertCircle, CheckCircle, Mail } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Shield, Eye, EyeOff, AlertCircle, CheckCircle, Mail, RefreshCw } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CustomButton } from '@/components/ui/custom-button';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AdminAuth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { setIsAdmin } = useAuth();
+  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState<'login' | 'signup' | 'verify'>('login');
@@ -18,11 +22,60 @@ const AdminAuth = () => {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Check for email confirmation on component mount
+  useEffect(() => {
+    const checkEmailConfirmation = async () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const type = hashParams.get('type');
+
+      if (accessToken && type === 'signup') {
+        try {
+          // Get the current session after email confirmation
+          const { data: { session }, error } = await supabase.auth.getSession();
+          
+          if (session?.user && !error) {
+            // Assign admin role to the confirmed user
+            const { error: roleError } = await supabase
+              .from('user_roles')
+              .upsert({
+                user_id: session.user.id,
+                role: 'admin'
+              });
+
+            if (roleError) {
+              console.error('Error assigning admin role:', roleError);
+              toast({
+                title: "Role Assignment Failed",
+                description: "Account verified but admin role assignment failed. Please contact support.",
+                variant: "destructive"
+              });
+              return;
+            }
+
+            setIsAdmin(true);
+            toast({
+              title: "Admin Account Verified!",
+              description: "Your admin account has been successfully verified. Welcome to the admin panel!",
+            });
+
+            // Clear the hash and redirect to admin dashboard
+            window.history.replaceState({}, document.title, window.location.pathname);
+            navigate('/admin');
+          }
+        } catch (error) {
+          console.error('Error during email confirmation:', error);
+        }
+      }
+    };
+
+    checkEmailConfirmation();
+  }, [navigate, toast, setIsAdmin]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -47,26 +100,56 @@ const AdminAuth = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const sendVerificationEmail = async (email: string, isResend = false) => {
+    try {
+      const redirectUrl = `${window.location.origin}/admin/login`;
+      
+      // Call our edge function to send verification email
+      const response = await fetch('/api/send-admin-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          confirmUrl: redirectUrl,
+          siteName: 'DistinctGyrro'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send verification email');
+      }
+
+      toast({
+        title: isResend ? "Verification Email Resent" : "Verification Email Sent",
+        description: `Please check your email (${email}) and click the verification link.`,
+      });
+
+    } catch (error) {
+      console.error('Error sending verification email:', error);
+      toast({
+        title: "Email Send Failed",
+        description: "Could not send verification email. The account was created but you may need manual verification.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
     
     setIsLoading(true);
     
     try {
-      console.log('AdminAuth: Attempting login with:', formData.email);
-      
       const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.email.trim(),
         password: formData.password
       });
       
       if (error) {
-        console.error('AdminAuth: Login error:', error);
-        
         if (error.message.includes('Invalid login credentials')) {
           toast({
             title: "Login Failed",
@@ -90,9 +173,7 @@ const AdminAuth = () => {
       }
       
       if (data.user) {
-        console.log('AdminAuth: Login successful:', data.user.email);
-        
-        // Check if user has admin role
+        // Check admin role
         const { data: roleData, error: roleError } = await supabase
           .from('user_roles')
           .select('role')
@@ -100,11 +181,7 @@ const AdminAuth = () => {
           .single();
         
         if (roleError || !roleData || roleData.role !== 'admin') {
-          console.error('AdminAuth: User is not an admin:', roleError);
-          
-          // Sign out the user since they don't have admin access
           await supabase.auth.signOut();
-          
           toast({
             title: "Access Denied",
             description: "You don't have admin privileges to access this panel.",
@@ -113,18 +190,17 @@ const AdminAuth = () => {
           return;
         }
         
-        console.log('AdminAuth: Admin access confirmed');
-        
+        setIsAdmin(true);
         toast({
           title: "Login Successful",
           description: "Welcome to the admin panel!",
         });
         
-        navigate('/admin/dashboard');
+        navigate('/admin');
       }
       
     } catch (error) {
-      console.error('AdminAuth: Unexpected error:', error);
+      console.error('Login error:', error);
       toast({
         title: "Login Failed",
         description: "An unexpected error occurred. Please try again.",
@@ -136,28 +212,13 @@ const AdminAuth = () => {
   };
 
   const handleCreateAdminAccount = async () => {
-    if (!formData.email.trim() || !formData.password.trim()) {
-      toast({
-        title: "Missing Information",
-        description: "Please enter both email and password to create an admin account.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
     
     setIsLoading(true);
     
     try {
-      console.log('AdminAuth: Creating admin account for:', formData.email);
+      const redirectUrl = `${window.location.origin}/admin/login`;
       
-      // Get current origin for redirect URL
-      const redirectUrl = `${window.location.origin}/admin/auth`;
-      
-      // First, try to sign up the user
       const { data, error } = await supabase.auth.signUp({
         email: formData.email.trim(),
         password: formData.password,
@@ -170,8 +231,6 @@ const AdminAuth = () => {
       });
       
       if (error) {
-        console.error('AdminAuth: Signup error:', error);
-        
         if (error.message.includes('User already registered')) {
           toast({
             title: "Account Exists",
@@ -190,48 +249,13 @@ const AdminAuth = () => {
       }
       
       if (data.user) {
-        console.log('AdminAuth: Signup successful:', data.user.email);
-        
-        // If user needs email confirmation
-        if (!data.session) {
-          setStep('verify');
-          toast({
-            title: "Check Your Email",
-            description: "We've sent you a verification email. Please check your inbox and click the link to verify your account.",
-          });
-          return;
-        }
-        
-        // User is signed in immediately, assign admin role
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .upsert({
-            user_id: data.user.id,
-            role: 'admin'
-          });
-        
-        if (roleError) {
-          console.error('AdminAuth: Role assignment error:', roleError);
-          toast({
-            title: "Role Assignment Failed",
-            description: "Account created but admin role assignment failed. Please contact support.",
-            variant: "destructive"
-          });
-          return;
-        }
-        
-        console.log('AdminAuth: Admin role assigned successfully');
-        
-        toast({
-          title: "Admin Account Created Successfully!",
-          description: "You can now access the admin panel.",
-        });
-        
-        navigate('/admin/dashboard');
+        // Send custom verification email
+        await sendVerificationEmail(formData.email);
+        setStep('verify');
       }
       
     } catch (error) {
-      console.error('AdminAuth: Unexpected error:', error);
+      console.error('Signup error:', error);
       toast({
         title: "Account Creation Failed",
         description: "An unexpected error occurred. Please try again.",
@@ -256,24 +280,29 @@ const AdminAuth = () => {
           <h1 className="text-2xl font-bold text-gray-800 mb-4">Check Your Email</h1>
           <p className="text-gray-600 mb-6">
             We've sent a verification email to <strong>{formData.email}</strong>. 
-            Please check your inbox and click the verification link to complete your admin account setup.
+            Please check your inbox and click the verification link to activate your admin account.
           </p>
           
           <div className="space-y-3">
+            <CustomButton
+              onClick={() => sendVerificationEmail(formData.email, true)}
+              disabled={isLoading}
+              className="w-full flex items-center justify-center"
+            >
+              {isLoading ? (
+                <RefreshCw className="animate-spin mr-2" size={16} />
+              ) : (
+                <Mail className="mr-2" size={16} />
+              )}
+              {isLoading ? 'Sending...' : 'Resend Verification Email'}
+            </CustomButton>
+            
             <CustomButton
               onClick={() => setStep('login')}
               variant="outline"
               className="w-full"
             >
               Back to Login
-            </CustomButton>
-            
-            <CustomButton
-              onClick={handleCreateAdminAccount}
-              disabled={isLoading}
-              className="w-full"
-            >
-              {isLoading ? 'Resending...' : 'Resend Verification Email'}
             </CustomButton>
           </div>
           

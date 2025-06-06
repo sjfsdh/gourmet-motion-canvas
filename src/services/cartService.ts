@@ -17,17 +17,39 @@ const getCartKey = (userId?: string) => {
 
 export const saveCartToSupabase = async (userId: string, cart: CartItem[]) => {
   try {
-    const { error } = await supabase
+    // First try to update existing cart
+    const { data: existingCart } = await supabase
       .from('user_carts')
-      .upsert({
-        user_id: userId,
-        cart_data: cart as any,
-        updated_at: new Date().toISOString()
-      });
-    
-    if (error) throw error;
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (existingCart) {
+      // Update existing cart
+      const { error } = await supabase
+        .from('user_carts')
+        .update({
+          cart_data: cart as any,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId);
+      
+      if (error) throw error;
+    } else {
+      // Insert new cart
+      const { error } = await supabase
+        .from('user_carts')
+        .insert({
+          user_id: userId,
+          cart_data: cart as any,
+          updated_at: new Date().toISOString()
+        });
+      
+      if (error) throw error;
+    }
   } catch (error) {
     console.error('Error saving cart to Supabase:', error);
+    throw error;
   }
 };
 
