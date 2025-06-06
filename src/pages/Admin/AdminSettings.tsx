@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Save, Settings, AlertCircle, RefreshCw } from 'lucide-react';
@@ -22,7 +21,8 @@ const AdminSettings = () => {
     about_text: '',
     facebook_url: '',
     instagram_url: '',
-    twitter_url: ''
+    twitter_url: '',
+    delivery_fee: 0
   });
 
   // Fetch current settings
@@ -70,7 +70,7 @@ const AdminSettings = () => {
     }
   });
 
-  const handleInputChange = (field: keyof RestaurantSettings, value: string) => {
+  const handleInputChange = (field: keyof RestaurantSettings, value: string | number) => {
     console.log('AdminSettings: Input changed:', field, value);
     setSettings(prev => ({
       ...prev,
@@ -93,6 +93,15 @@ const AdminSettings = () => {
       toast({
         title: "Validation Error",
         description: "Restaurant email is required.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (settings.delivery_fee !== undefined && settings.delivery_fee < 0) {
+      toast({
+        title: "Validation Error",
+        description: "Delivery fee cannot be negative.",
         variant: "destructive"
       });
       return;
@@ -212,6 +221,22 @@ const AdminSettings = () => {
                 />
               </div>
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Delivery Fee ($)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={settings.delivery_fee || 0}
+                onChange={(e) => handleInputChange('delivery_fee', parseFloat(e.target.value) || 0)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-restaurant-green"
+                placeholder="0.00"
+              />
+              <p className="text-sm text-gray-500 mt-1">Set to 0 for free delivery</p>
+            </div>
           </div>
         </div>
 
@@ -261,6 +286,9 @@ const AdminSettings = () => {
           </div>
           <div>
             <strong>Phone:</strong> {settings.restaurant_phone}
+          </div>
+          <div>
+            <strong>Delivery Fee:</strong> ${(settings.delivery_fee || 0).toFixed(2)}
           </div>
           <div className="md:col-span-2">
             <strong>Address:</strong> {settings.restaurant_address}

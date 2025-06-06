@@ -15,6 +15,7 @@ export interface RestaurantSettings {
   facebook_url?: string;
   instagram_url?: string;
   twitter_url?: string;
+  delivery_fee?: number;
 }
 
 const defaultSettings: RestaurantSettings = {
@@ -29,7 +30,8 @@ const defaultSettings: RestaurantSettings = {
   about_text: 'Experience the fresh, bold flavors of the Mediterranean with our carefully crafted dishes and warm hospitality.',
   facebook_url: '',
   instagram_url: '',
-  twitter_url: ''
+  twitter_url: '',
+  delivery_fee: 0
 };
 
 export const getRestaurantSettings = async (): Promise<RestaurantSettings> => {
@@ -56,7 +58,8 @@ export const getRestaurantSettings = async (): Promise<RestaurantSettings> => {
       about_text: defaultSettings.about_text,
       facebook_url: '',
       instagram_url: '',
-      twitter_url: ''
+      twitter_url: '',
+      delivery_fee: data.delivery_fee || 0
     };
   } catch (error) {
     console.error('Error loading restaurant settings:', error);
@@ -77,6 +80,7 @@ export const updateRestaurantSettings = async (
         restaurant_phone: settings.restaurant_phone,
         restaurant_email: settings.restaurant_email,
         opening_hours: settings.opening_hours,
+        delivery_fee: settings.delivery_fee,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
@@ -100,7 +104,8 @@ export const updateRestaurantSettings = async (
       about_text: defaultSettings.about_text,
       facebook_url: '',
       instagram_url: '',
-      twitter_url: ''
+      twitter_url: '',
+      delivery_fee: data.delivery_fee || 0
     };
     
     // Broadcast settings update
