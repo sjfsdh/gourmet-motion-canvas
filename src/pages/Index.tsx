@@ -9,17 +9,17 @@ import { Clock, MapPin, Phone } from 'lucide-react';
 const Index = () => {
   const features = [
     {
-      icon: Clock,
+      icon: <Clock className="w-6 h-6" />,
       title: "Fast Service",
       description: "Quick and efficient service without compromising on quality"
     },
     {
-      icon: MapPin,
+      icon: <MapPin className="w-6 h-6" />,
       title: "Prime Location",
       description: "Conveniently located in the heart of the city"
     },
     {
-      icon: Phone,
+      icon: <Phone className="w-6 h-6" />,
       title: "Easy Ordering",
       description: "Order online or call us for takeout and delivery"
     }
@@ -27,11 +27,23 @@ const Index = () => {
 
   return (
     <div className="min-h-screen">
-      <HeroBanner />
+      <HeroBanner 
+        title="Welcome to DistinctGyrro"
+        subtitle="Authentic Mediterranean cuisine crafted with passion and tradition"
+        backgroundImage="/placeholder.svg"
+        primaryCta={{
+          text: "View Menu",
+          link: "/menu"
+        }}
+        secondaryCta={{
+          text: "About Us",
+          link: "/about"
+        }}
+      />
       
       <section className="py-16 bg-gray-50">
         <div className="container-custom">
-          <AnimatedSection animation="fadeInUp">
+          <AnimatedSection animation="fadeIn">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold text-gray-800 mb-4">
                 Why Choose DistinctGyrro?
@@ -44,16 +56,14 @@ const Index = () => {
           </AnimatedSection>
 
           <StaggeredItems>
-            <div className="grid md:grid-cols-3 gap-8">
-              {features.map((feature, index) => (
-                <FeatureCard
-                  key={index}
-                  icon={feature.icon}
-                  title={feature.title}
-                  description={feature.description}
-                />
-              ))}
-            </div>
+            {features.map((feature, index) => (
+              <FeatureCard
+                key={index}
+                icon={feature.icon}
+                title={feature.title}
+                description={feature.description}
+              />
+            ))}
           </StaggeredItems>
         </div>
       </section>
@@ -61,7 +71,7 @@ const Index = () => {
       {/* Newsletter Section */}
       <section className="py-16 bg-white">
         <div className="container-custom max-w-2xl">
-          <AnimatedSection animation="fadeInUp">
+          <AnimatedSection animation="fadeIn">
             <NewsletterSignup />
           </AnimatedSection>
         </div>

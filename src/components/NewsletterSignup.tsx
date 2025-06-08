@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { Mail, CheckCircle } from 'lucide-react';
 import { CustomButton } from '@/components/ui/custom-button';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 const NewsletterSignup = () => {
   const [email, setEmail] = useState('');
@@ -27,51 +26,21 @@ const NewsletterSignup = () => {
     setIsLoading(true);
 
     try {
-      // Store newsletter subscription in Supabase
-      const { error } = await supabase
-        .from('newsletter_subscriptions')
-        .insert({
-          email: email.toLowerCase().trim(),
-          subscribed_at: new Date().toISOString()
-        });
-
-      if (error) {
-        if (error.code === '23505') { // Unique constraint violation
-          toast({
-            title: "Already Subscribed",
-            description: "This email is already subscribed to our newsletter.",
-            variant: "destructive"
-          });
-        } else {
-          throw error;
-        }
-        return;
-      }
-
-      // Send welcome email via edge function
-      try {
-        await supabase.functions.invoke('send-newsletter-welcome', {
-          body: {
-            email: email.toLowerCase().trim(),
-            name: email.split('@')[0] // Use email prefix as fallback name
-          }
-        });
-      } catch (emailError) {
-        console.error('Error sending welcome email:', emailError);
-        // Don't fail the subscription if email fails
-      }
+      // For now, just simulate a successful subscription
+      // TODO: Implement actual newsletter subscription logic with database
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       setIsSubscribed(true);
       toast({
         title: "Successfully Subscribed!",
-        description: "Thank you for subscribing to our newsletter. Check your email for a welcome message!",
+        description: "Thank you for subscribing to our newsletter!",
       });
 
     } catch (error: any) {
       console.error('Newsletter subscription error:', error);
       toast({
         title: "Subscription Failed",
-        description: error.message || "Could not subscribe to newsletter. Please try again.",
+        description: "Could not subscribe to newsletter. Please try again.",
         variant: "destructive"
       });
     } finally {
