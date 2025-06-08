@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import { Mail, CheckCircle } from 'lucide-react';
 import { CustomButton } from '@/components/ui/custom-button';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { sendNewsletterWelcomeEmail } from '@/services/emailService';
 
 const NewsletterSignup = () => {
   const [email, setEmail] = useState('');
@@ -26,14 +28,69 @@ const NewsletterSignup = () => {
     setIsLoading(true);
 
     try {
-      // For now, just simulate a successful subscription
-      // TODO: Implement actual newsletter subscription logic with database
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Check if email already exists
+      const { data: existingSubscription, error: checkError } = await supabase
+        .from('newsletter_subscriptions')
+        .select('email, is_active')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('Error checking existing subscription:', checkError);
+        throw new Error('Failed to check existing subscription');
+      }
+
+      if (existingSubscription) {
+        if (existingSubscription.is_active) {
+          toast({
+            title: "Already Subscribed",
+            description: "This email is already subscribed to our newsletter!",
+            variant: "destructive"
+          });
+          return;
+        } else {
+          // Reactivate subscription
+          const { error: updateError } = await supabase
+            .from('newsletter_subscriptions')
+            .update({ 
+              is_active: true, 
+              subscribed_at: new Date().toISOString(),
+              unsubscribed_at: null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('email', email);
+
+          if (updateError) {
+            console.error('Error reactivating subscription:', updateError);
+            throw new Error('Failed to reactivate subscription');
+          }
+        }
+      } else {
+        // Create new subscription
+        const { error: insertError } = await supabase
+          .from('newsletter_subscriptions')
+          .insert([{
+            email: email
+          }]);
+
+        if (insertError) {
+          console.error('Error creating subscription:', insertError);
+          throw new Error('Failed to create subscription');
+        }
+      }
+
+      // Send welcome email
+      try {
+        await sendNewsletterWelcomeEmail(email);
+      } catch (emailError) {
+        console.error('Error sending welcome email:', emailError);
+        // Don't fail the whole process if email fails
+      }
 
       setIsSubscribed(true);
       toast({
         title: "Successfully Subscribed!",
-        description: "Thank you for subscribing to our newsletter!",
+        description: "Thank you for subscribing to our newsletter! Check your email for a welcome message.",
       });
 
     } catch (error: any) {

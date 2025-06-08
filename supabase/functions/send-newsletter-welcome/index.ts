@@ -24,6 +24,25 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { email, name = 'Food Lover' }: NewsletterWelcomeRequest = await req.json();
 
+    // Add contact to Resend audience (optional - requires audience setup)
+    const audienceId = Deno.env.get("RESEND_AUDIENCE_ID");
+    if (audienceId) {
+      try {
+        await resend.contacts.create({
+          email: email,
+          firstName: name.split(' ')[0] || 'Food',
+          lastName: name.split(' ').slice(1).join(' ') || 'Lover',
+          unsubscribed: false,
+          audienceId: audienceId,
+        });
+        console.log("Contact added to Resend audience:", email);
+      } catch (contactError) {
+        console.error("Error adding contact to audience:", contactError);
+        // Don't fail the email send if contact creation fails
+      }
+    }
+
+    // Send welcome email
     const emailResponse = await resend.emails.send({
       from: "DistinctGyrro Newsletter <newsletter@distinctgyrro.com>",
       to: [email],
