@@ -105,20 +105,16 @@ const AdminAuth = () => {
       const redirectUrl = `${window.location.origin}/admin/login`;
       
       // Call our edge function to send verification email
-      const response = await fetch('/api/send-admin-verification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('send-admin-verification', {
+        body: {
           email,
           confirmUrl: redirectUrl,
           siteName: 'DistinctGyrro'
-        }),
+        }
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to send verification email');
+      if (error) {
+        throw error;
       }
 
       toast({
@@ -266,6 +262,83 @@ const AdminAuth = () => {
     }
   };
 
+  // Demo admin login function
+  const handleDemoAdminLogin = async () => {
+    setIsLoading(true);
+    try {
+      // Create demo admin user if it doesn't exist
+      const demoEmail = 'admin@distinctgyrro.com';
+      const demoPassword = 'admin123456';
+      
+      // Try to sign in first
+      let { data, error } = await supabase.auth.signInWithPassword({
+        email: demoEmail,
+        password: demoPassword
+      });
+      
+      // If login fails, create the demo admin account
+      if (error && error.message.includes('Invalid login credentials')) {
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: demoEmail,
+          password: demoPassword,
+          options: {
+            data: {
+              full_name: 'Demo Admin'
+            }
+          }
+        });
+        
+        if (signUpError) {
+          throw signUpError;
+        }
+        
+        // If signup requires email confirmation, we need to manually confirm for demo
+        if (signUpData.user && !signUpData.session) {
+          toast({
+            title: "Demo Account Created",
+            description: "Demo admin account created. For production, you would need email verification.",
+          });
+          return;
+        }
+        
+        data = signUpData;
+      } else if (error) {
+        throw error;
+      }
+      
+      if (data?.user) {
+        // Ensure admin role exists
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .upsert({
+            user_id: data.user.id,
+            role: 'admin'
+          });
+        
+        if (roleError) {
+          console.error('Error assigning admin role:', roleError);
+        }
+        
+        setIsAdmin(true);
+        toast({
+          title: "Demo Login Successful",
+          description: "Logged in as demo admin!",
+        });
+        
+        navigate('/admin');
+      }
+    } catch (error: any) {
+      console.error('Demo login error:', error);
+      toast({
+        title: "Demo Login Failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (step === 'verify') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
@@ -332,6 +405,29 @@ const AdminAuth = () => {
           </div>
           <h1 className="text-2xl font-bold text-gray-800">Admin Panel</h1>
           <p className="text-gray-600 mt-2">Secure access to restaurant management</p>
+        </div>
+
+        {/* Demo Login Button */}
+        <div className="mb-6">
+          <CustomButton
+            onClick={handleDemoAdminLogin}
+            disabled={isLoading}
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3"
+          >
+            {isLoading ? 'Logging in...' : '🚀 Demo Admin Login'}
+          </CustomButton>
+          <p className="text-xs text-gray-500 text-center mt-2">
+            Quick login for testing (admin@distinctgyrro.com)
+          </p>
+        </div>
+
+        <div className="relative mb-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300" />
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">or use custom credentials</span>
+          </div>
         </div>
 
         <div className="flex mb-6">

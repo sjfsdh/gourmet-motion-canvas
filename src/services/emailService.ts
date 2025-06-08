@@ -50,3 +50,24 @@ export const sendAdminVerificationEmail = async (email: string, confirmUrl: stri
     throw error;
   }
 };
+
+export const sendNewsletterWelcomeEmail = async (email: string, name?: string) => {
+  try {
+    const { data, error } = await supabase.functions.invoke('send-newsletter-welcome', {
+      body: {
+        email,
+        name
+      }
+    });
+
+    if (error) {
+      console.error('Error sending newsletter welcome email:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Failed to send newsletter welcome email:', error);
+    throw error;
+  }
+};
