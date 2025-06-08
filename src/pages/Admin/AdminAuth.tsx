@@ -100,38 +100,6 @@ const AdminAuth = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const sendVerificationEmail = async (email: string, isResend = false) => {
-    try {
-      const redirectUrl = `${window.location.origin}/admin/login`;
-      
-      // Call our edge function to send verification email
-      const { data, error } = await supabase.functions.invoke('send-admin-verification', {
-        body: {
-          email,
-          confirmUrl: redirectUrl,
-          siteName: 'DistinctGyrro'
-        }
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      toast({
-        title: isResend ? "Verification Email Resent" : "Verification Email Sent",
-        description: `Please check your email (${email}) and click the verification link.`,
-      });
-
-    } catch (error) {
-      console.error('Error sending verification email:', error);
-      toast({
-        title: "Email Send Failed",
-        description: "Could not send verification email. The account was created but you may need manual verification.",
-        variant: "destructive"
-      });
-    }
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -245,8 +213,10 @@ const AdminAuth = () => {
       }
       
       if (data.user) {
-        // Send custom verification email
-        await sendVerificationEmail(formData.email);
+        toast({
+          title: "Account Created",
+          description: "Please check your email to verify your admin account.",
+        });
         setStep('verify');
       }
       
@@ -262,11 +232,11 @@ const AdminAuth = () => {
     }
   };
 
-  // Demo admin login function
+  // Demo admin login function with correct credentials
   const handleDemoAdminLogin = async () => {
     setIsLoading(true);
     try {
-      // Create demo admin user if it doesn't exist
+      // Use the exact credentials from your demo
       const demoEmail = 'admin@distinctgyrro.com';
       const demoPassword = 'admin123456';
       
@@ -276,8 +246,10 @@ const AdminAuth = () => {
         password: demoPassword
       });
       
-      // If login fails, create the demo admin account
+      // If login fails with invalid credentials, create the demo admin account
       if (error && error.message.includes('Invalid login credentials')) {
+        console.log('Creating demo admin account...');
+        
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: demoEmail,
           password: demoPassword,
@@ -289,24 +261,28 @@ const AdminAuth = () => {
         });
         
         if (signUpError) {
+          console.error('Signup error:', signUpError);
           throw signUpError;
         }
         
-        // If signup requires email confirmation, we need to manually confirm for demo
-        if (signUpData.user && !signUpData.session) {
+        // If signup succeeded and we got a session (auto-confirmed)
+        if (signUpData.session) {
+          data = signUpData;
+        } else {
+          // Account created but needs email confirmation
           toast({
             title: "Demo Account Created",
-            description: "Demo admin account created. For production, you would need email verification.",
+            description: "Demo admin account created. Please check email for verification.",
           });
           return;
         }
-        
-        data = signUpData;
       } else if (error) {
         throw error;
       }
       
       if (data?.user) {
+        console.log('Demo admin logged in successfully');
+        
         // Ensure admin role exists
         const { error: roleError } = await supabase
           .from('user_roles')
@@ -317,6 +293,7 @@ const AdminAuth = () => {
         
         if (roleError) {
           console.error('Error assigning admin role:', roleError);
+          // Don't fail the login for role assignment errors
         }
         
         setIsAdmin(true);
@@ -331,7 +308,7 @@ const AdminAuth = () => {
       console.error('Demo login error:', error);
       toast({
         title: "Demo Login Failed",
-        description: error.message,
+        description: error.message || "Failed to create demo admin account",
         variant: "destructive"
       });
     } finally {
@@ -357,19 +334,6 @@ const AdminAuth = () => {
           </p>
           
           <div className="space-y-3">
-            <CustomButton
-              onClick={() => sendVerificationEmail(formData.email, true)}
-              disabled={isLoading}
-              className="w-full flex items-center justify-center"
-            >
-              {isLoading ? (
-                <RefreshCw className="animate-spin mr-2" size={16} />
-              ) : (
-                <Mail className="mr-2" size={16} />
-              )}
-              {isLoading ? 'Sending...' : 'Resend Verification Email'}
-            </CustomButton>
-            
             <CustomButton
               onClick={() => setStep('login')}
               variant="outline"

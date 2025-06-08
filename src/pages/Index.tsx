@@ -4,6 +4,7 @@ import StaggeredItems from '@/components/animations/StaggeredItems';
 import HeroBanner from '@/components/HeroBanner';
 import FeatureCard from '@/components/FeatureCard';
 import NewsletterSignup from '@/components/NewsletterSignup';
+import FeaturedProducts from '@/components/FeaturedProducts';
 import { Clock, MapPin, Phone } from 'lucide-react';
 
 const Index = () => {
@@ -30,7 +31,7 @@ const Index = () => {
       <HeroBanner 
         title="Welcome to DistinctGyrro"
         subtitle="Authentic Mediterranean cuisine crafted with passion and tradition"
-        backgroundImage="/placeholder.svg"
+        backgroundImage="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
         primaryCta={{
           text: "View Menu",
           link: "/menu"
@@ -40,6 +41,9 @@ const Index = () => {
           link: "/about"
         }}
       />
+      
+      {/* Featured Products Section */}
+      <FeaturedProducts />
       
       <section className="py-16 bg-gray-50">
         <div className="container-custom">

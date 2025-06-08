@@ -30,8 +30,8 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
     <section className="relative h-[90vh] flex items-center justify-center overflow-hidden">
       <div className="absolute inset-0 z-0">
         <img 
-          src={backgroundImage}
-          alt="Hero background"
+          src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
+          alt="Hero background - Restaurant interior"
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-black/30"></div>
@@ -76,19 +76,19 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
           className="flex flex-col sm:flex-row justify-center gap-4"
         >
           {primaryCta && (
-            <CustomButton size="lg" className="shadow-lg">
-              <Link to={primaryCta.link} className="flex items-center gap-2">
+            <Link to={primaryCta.link}>
+              <CustomButton size="lg" className="shadow-lg flex items-center gap-2">
                 {primaryCta.text} <ArrowRight size={18} />
-              </Link>
-            </CustomButton>
+              </CustomButton>
+            </Link>
           )}
           
           {secondaryCta && (
-            <CustomButton variant="outline" size="lg">
-              <Link to={secondaryCta.link} className="flex items-center gap-2">
+            <Link to={secondaryCta.link}>
+              <CustomButton variant="outline" size="lg" className="flex items-center gap-2 bg-white/10 text-white border-white hover:bg-white hover:text-gray-900">
                 {secondaryCta.text} <ArrowRight size={18} />
-              </Link>
-            </CustomButton>
+              </CustomButton>
+            </Link>
           )}
         </motion.div>
       </div>
