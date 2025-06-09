@@ -30,9 +30,13 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
     <section className="relative h-[90vh] flex items-center justify-center overflow-hidden">
       <div className="absolute inset-0 z-0">
         <img 
-          src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
+          src={backgroundImage}
           alt="Hero background - Restaurant interior"
           className="w-full h-full object-cover"
+          onError={(e) => {
+            console.log('Hero image failed to load, using fallback');
+            (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80";
+          }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-black/30"></div>
         

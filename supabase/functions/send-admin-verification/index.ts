@@ -6,14 +6,13 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface AdminVerificationRequest {
+interface AdminInviteRequest {
   email: string;
-  confirmUrl: string;
-  siteName?: string;
+  inviteLink: string;
+  inviterName?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -23,118 +22,78 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, confirmUrl, siteName = "DistinctGyrro" }: AdminVerificationRequest = await req.json();
+    const { email, inviteLink, inviterName = "DistinctGyrro Team" }: AdminInviteRequest = await req.json();
 
-    const emailResponse = await resend.emails.send({
-      from: `${siteName} Admin <admin@distinctgyrro.com>`,
-      to: [email],
-      subject: `Verify your ${siteName} Admin Account`,
-      html: `
-        <!DOCTYPE html>
-        <html>
+    console.log("Processing admin invite for:", { email });
+
+    const emailHtml = `
+      <!DOCTYPE html>
+      <html>
         <head>
           <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <title>Admin Account Verification</title>
-          <style>
-            body { 
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-              line-height: 1.6; 
-              color: #333; 
-              max-width: 600px; 
-              margin: 0 auto; 
-              padding: 20px; 
-            }
-            .header { 
-              background: linear-gradient(135deg, #22c55e, #16a34a); 
-              color: white; 
-              padding: 30px; 
-              text-align: center; 
-              border-radius: 8px 8px 0 0; 
-            }
-            .content { 
-              background: #fff; 
-              padding: 30px; 
-              border: 1px solid #e5e7eb; 
-            }
-            .button { 
-              display: inline-block; 
-              background: #22c55e; 
-              color: white; 
-              padding: 12px 24px; 
-              text-decoration: none; 
-              border-radius: 6px; 
-              font-weight: bold; 
-              margin: 20px 0; 
-            }
-            .footer { 
-              background: #f9fafb; 
-              padding: 20px; 
-              text-align: center; 
-              font-size: 14px; 
-              color: #6b7280; 
-              border-radius: 0 0 8px 8px; 
-            }
-            .security-note {
-              background: #fef3c7;
-              border: 1px solid #f59e0b;
-              padding: 15px;
-              border-radius: 6px;
-              margin: 20px 0;
-            }
-          </style>
+          <title>Admin Account Invitation - DistinctGyrro</title>
         </head>
-        <body>
-          <div class="header">
-            <h1>🛡️ Admin Account Verification</h1>
-            <p>Welcome to ${siteName} Admin Panel</p>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+            <h1 style="margin: 0; font-size: 28px;">🛡️ Admin Access Invitation</h1>
+            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">You've been invited to join the admin panel</p>
           </div>
           
-          <div class="content">
-            <h2>Verify Your Admin Account</h2>
-            <p>Hello!</p>
-            <p>You've requested to create an admin account for <strong>${siteName}</strong>. To complete your registration and gain access to the admin panel, please verify your email address.</p>
+          <div style="background: white; padding: 30px; border: 1px solid #ddd; border-top: none; border-radius: 0 0 10px 10px;">
+            <h2 style="color: #2c3e50; margin-top: 0;">Welcome to DistinctGyrro Admin!</h2>
+            <p>You have been invited by <strong>${inviterName}</strong> to become an administrator for DistinctGyrro restaurant management system.</p>
+            
+            <div style="background: #e8f4fd; border: 1px solid #3498db; border-radius: 8px; padding: 20px; margin: 20px 0;">
+              <h4 style="color: #2980b9; margin: 0 0 15px 0;">🔐 Admin Privileges Include:</h4>
+              <ul style="margin: 0; color: #2980b9; padding-left: 20px;">
+                <li>Menu management and pricing</li>
+                <li>Order tracking and management</li>
+                <li>Customer communication</li>
+                <li>Restaurant settings and configuration</li>
+                <li>Sales analytics and reporting</li>
+              </ul>
+            </div>
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${confirmUrl}" class="button">✅ Verify Admin Account</a>
+              <a href="${inviteLink}" 
+                 style="background: #e74c3c; color: white; padding: 15px 30px; text-decoration: none; border-radius: 25px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);">
+                🚀 Activate Admin Account
+              </a>
             </div>
             
-            <div class="security-note">
-              <strong>🔒 Security Notice:</strong> This link will grant you administrative access to ${siteName}. Only click this link if you requested admin access.
+            <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
+              <h4 style="color: #856404; margin: 0 0 10px 0;">⚠️ Important Security Notice</h4>
+              <p style="margin: 0; color: #856404; font-size: 14px;">
+                This invitation link will expire in 24 hours. If you didn't expect this invitation or believe it was sent in error, please ignore this email and contact our support team immediately.
+              </p>
             </div>
             
-            <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
-            <p style="word-break: break-all; background: #f3f4f6; padding: 10px; border-radius: 4px;">
-              ${confirmUrl}
+            <p style="margin: 30px 0; font-size: 14px; color: #6c757d;">
+              If the button above doesn't work, copy and paste this link into your browser:<br>
+              <a href="${inviteLink}" style="color: #3498db; word-break: break-all;">${inviteLink}</a>
             </p>
             
-            <p><strong>What happens next?</strong></p>
-            <ul>
-              <li>Click the verification link above</li>
-              <li>You'll be redirected to the admin login page</li>
-              <li>Use your email and password to access the admin panel</li>
-              <li>Manage menu items, orders, and restaurant settings</li>
-            </ul>
-            
-            <p>If you didn't request admin access, please ignore this email or contact support.</p>
-          </div>
-          
-          <div class="footer">
-            <p>This email was sent by ${siteName} Admin System</p>
-            <p>If you need help, please contact our support team.</p>
+            <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+              <p style="margin: 0; color: #6c757d; font-size: 14px;">
+                Questions? Contact us at admin@distinctgyrro.com<br>
+                <strong>DistinctGyrro Management Team</strong>
+              </p>
+            </div>
           </div>
         </body>
-        </html>
-      `,
+      </html>
+    `;
+
+    const emailResponse = await resend.emails.send({
+      from: "DistinctGyrro Admin <admin@distinctgyrro.com>",
+      to: [email],
+      subject: "🛡️ Admin Access Invitation - DistinctGyrro",
+      html: emailHtml,
     });
 
     console.log("Admin verification email sent successfully:", emailResponse);
 
-    return new Response(JSON.stringify({ 
-      success: true, 
-      message: "Verification email sent successfully",
-      emailId: emailResponse.data?.id 
-    }), {
+    return new Response(JSON.stringify(emailResponse), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
@@ -144,11 +103,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Error in send-admin-verification function:", error);
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message,
-        details: "Failed to send admin verification email"
-      }),
+      JSON.stringify({ error: error.message }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },

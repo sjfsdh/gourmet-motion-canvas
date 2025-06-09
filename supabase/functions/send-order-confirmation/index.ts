@@ -6,21 +6,19 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 interface OrderConfirmationRequest {
+  orderId: string;
   customerEmail: string;
   customerName: string;
-  orderId: string;
+  orderTotal: number;
   orderItems: Array<{
     name: string;
     quantity: number;
     price: number;
   }>;
-  total: number;
-  estimatedTime?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -30,147 +28,98 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { 
-      customerEmail, 
-      customerName, 
-      orderId, 
-      orderItems, 
-      total, 
-      estimatedTime = "30-45 minutes" 
-    }: OrderConfirmationRequest = await req.json();
+    const { orderId, customerEmail, customerName, orderTotal, orderItems }: OrderConfirmationRequest = await req.json();
 
-    const itemsHtml = orderItems.map(item => `
+    console.log("Processing order confirmation for:", { orderId, customerEmail });
+
+    // Generate order items HTML
+    const orderItemsHtml = orderItems.map(item => `
       <tr>
         <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.name}</td>
         <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
         <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">$${item.price.toFixed(2)}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">$${(item.price * item.quantity).toFixed(2)}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">$${(item.quantity * item.price).toFixed(2)}</td>
       </tr>
     `).join('');
 
-    const emailResponse = await resend.emails.send({
-      from: "DistinctGyrro <orders@distinctgyrro.com>",
-      to: [customerEmail],
-      subject: `Order Confirmation - #${orderId}`,
-      html: `
-        <!DOCTYPE html>
-        <html>
+    const emailHtml = `
+      <!DOCTYPE html>
+      <html>
         <head>
           <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <title>Order Confirmation</title>
-          <style>
-            body { 
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-              line-height: 1.6; 
-              color: #333; 
-              max-width: 600px; 
-              margin: 0 auto; 
-              padding: 20px; 
-              background-color: #f9f9f9;
-            }
-            .container {
-              background: white;
-              border-radius: 8px;
-              overflow: hidden;
-              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            }
-            .header { 
-              background: linear-gradient(135deg, #22c55e, #16a34a); 
-              color: white; 
-              padding: 30px; 
-              text-align: center; 
-            }
-            .content { 
-              padding: 30px; 
-            }
-            .order-details {
-              background: #f8f9fa;
-              padding: 20px;
-              border-radius: 6px;
-              margin: 20px 0;
-            }
-            .items-table {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 20px 0;
-            }
-            .items-table th {
-              background: #22c55e;
-              color: white;
-              padding: 12px 8px;
-              text-align: left;
-            }
-            .total-row {
-              font-weight: bold;
-              background: #f0f0f0;
-            }
-            .footer { 
-              background: #f9fafb; 
-              padding: 20px; 
-              text-align: center; 
-              font-size: 14px; 
-              color: #6b7280; 
-            }
-          </style>
+          <title>Order Confirmation - DistinctGyrro</title>
         </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>🎉 Order Confirmed!</h1>
-              <p>Thank you for your order, ${customerName}!</p>
-            </div>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+            <h1 style="margin: 0; font-size: 28px;">Order Confirmed!</h1>
+            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Thank you for your order</p>
+          </div>
+          
+          <div style="background: white; padding: 30px; border: 1px solid #ddd; border-top: none; border-radius: 0 0 10px 10px;">
+            <h2 style="color: #2c3e50; margin-top: 0;">Hi ${customerName}!</h2>
+            <p>We've received your order and are preparing your delicious Mediterranean cuisine. Here are the details:</p>
             
-            <div class="content">
-              <div class="order-details">
-                <h3>Order Details</h3>
-                <p><strong>Order ID:</strong> #${orderId}</p>
-                <p><strong>Estimated Delivery:</strong> ${estimatedTime}</p>
-                <p><strong>Status:</strong> Confirmed & Being Prepared</p>
-              </div>
-              
-              <h3>Your Items</h3>
-              <table class="items-table">
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="margin: 0 0 15px 0; color: #2c3e50;">Order #${orderId}</h3>
+              <table style="width: 100%; border-collapse: collapse;">
                 <thead>
-                  <tr>
-                    <th>Item</th>
-                    <th style="text-align: center;">Qty</th>
-                    <th style="text-align: right;">Price</th>
-                    <th style="text-align: right;">Subtotal</th>
+                  <tr style="background: #e9ecef;">
+                    <th style="padding: 12px 8px; text-align: left; border-bottom: 2px solid #dee2e6;">Item</th>
+                    <th style="padding: 12px 8px; text-align: center; border-bottom: 2px solid #dee2e6;">Qty</th>
+                    <th style="padding: 12px 8px; text-align: right; border-bottom: 2px solid #dee2e6;">Price</th>
+                    <th style="padding: 12px 8px; text-align: right; border-bottom: 2px solid #dee2e6;">Total</th>
                   </tr>
                 </thead>
                 <tbody>
-                  ${itemsHtml}
-                  <tr class="total-row">
-                    <td colspan="3" style="padding: 12px 8px; text-align: right;">Total:</td>
-                    <td style="padding: 12px 8px; text-align: right;">$${total.toFixed(2)}</td>
+                  ${orderItemsHtml}
+                  <tr style="background: #f8f9fa; font-weight: bold;">
+                    <td colspan="3" style="padding: 12px 8px; text-align: right; border-top: 2px solid #dee2e6;">Total:</td>
+                    <td style="padding: 12px 8px; text-align: right; border-top: 2px solid #dee2e6;">$${orderTotal.toFixed(2)}</td>
                   </tr>
                 </tbody>
               </table>
-              
-              <div style="background: #e3f2fd; padding: 15px; border-radius: 6px; margin: 20px 0;">
-                <p><strong>📱 Order Updates:</strong> We'll send you updates as your order progresses!</p>
-                <p><strong>🚀 Questions?</strong> Reply to this email or call us at +1 (123) 456-7890</p>
-              </div>
             </div>
             
-            <div class="footer">
-              <p>Thank you for choosing DistinctGyrro!</p>
-              <p>This email was sent regarding your order #${orderId}</p>
+            <div style="background: #e8f5e8; border: 1px solid #4caf50; border-radius: 8px; padding: 20px; margin: 20px 0;">
+              <h4 style="color: #2e7d32; margin: 0 0 10px 0;">⏱️ Estimated Preparation Time</h4>
+              <p style="margin: 0; color: #2e7d32;">Your order will be ready in approximately 15-25 minutes.</p>
+            </div>
+            
+            <div style="margin: 30px 0; padding: 20px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px;">
+              <h4 style="color: #856404; margin: 0 0 10px 0;">📍 Pickup Information</h4>
+              <p style="margin: 0; color: #856404;">
+                <strong>DistinctGyrro</strong><br>
+                123 Main Street<br>
+                City, Country<br>
+                Phone: +1 (123) 456-7890
+              </p>
+            </div>
+            
+            <p style="margin: 30px 0 0 0; text-align: center; color: #6c757d;">
+              Questions about your order? Reply to this email or call us at +1 (123) 456-7890
+            </p>
+            
+            <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+              <p style="margin: 0; color: #6c757d; font-size: 14px;">
+                Thank you for choosing DistinctGyrro!<br>
+                <em>Authentic Mediterranean cuisine crafted with passion</em>
+              </p>
             </div>
           </div>
         </body>
-        </html>
-      `,
+      </html>
+    `;
+
+    const emailResponse = await resend.emails.send({
+      from: "DistinctGyrro <noreply@distinctgyrro.com>",
+      to: [customerEmail],
+      subject: `Order Confirmation #${orderId} - DistinctGyrro`,
+      html: emailHtml,
     });
 
     console.log("Order confirmation email sent successfully:", emailResponse);
 
-    return new Response(JSON.stringify({ 
-      success: true, 
-      message: "Order confirmation email sent successfully",
-      emailId: emailResponse.data?.id 
-    }), {
+    return new Response(JSON.stringify(emailResponse), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
@@ -180,11 +129,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Error in send-order-confirmation function:", error);
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message,
-        details: "Failed to send order confirmation email"
-      }),
+      JSON.stringify({ error: error.message }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },

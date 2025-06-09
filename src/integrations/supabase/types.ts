@@ -214,6 +214,7 @@ export type Database = {
           created_at: string | null
           full_name: string | null
           id: string
+          is_admin: boolean | null
           phone: string | null
           updated_at: string | null
           zip_code: string | null
@@ -224,6 +225,7 @@ export type Database = {
           created_at?: string | null
           full_name?: string | null
           id: string
+          is_admin?: boolean | null
           phone?: string | null
           updated_at?: string | null
           zip_code?: string | null
@@ -234,6 +236,7 @@ export type Database = {
           created_at?: string | null
           full_name?: string | null
           id?: string
+          is_admin?: boolean | null
           phone?: string | null
           updated_at?: string | null
           zip_code?: string | null
@@ -384,6 +387,10 @@ export type Database = {
     }
     Functions: {
       is_admin: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
+      is_admin_user: {
         Args: { user_id: string }
         Returns: boolean
       }

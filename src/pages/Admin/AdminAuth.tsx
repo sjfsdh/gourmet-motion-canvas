@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Eye, EyeOff, AlertCircle, CheckCircle, Mail, RefreshCw } from 'lucide-react';
+import { Shield, Eye, EyeOff, AlertCircle, Mail } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,37 +31,32 @@ const AdminAuth = () => {
 
       if (accessToken && type === 'signup') {
         try {
-          // Get the current session after email confirmation
           const { data: { session }, error } = await supabase.auth.getSession();
           
           if (session?.user && !error) {
-            // Assign admin role to the confirmed user
-            const { error: roleError } = await supabase
-              .from('user_roles')
-              .upsert({
-                user_id: session.user.id,
-                role: 'admin'
-              });
+            // Check if user is admin
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('is_admin')
+              .eq('id', session.user.id)
+              .single();
 
-            if (roleError) {
-              console.error('Error assigning admin role:', roleError);
+            if (profile?.is_admin) {
+              setIsAdmin(true);
               toast({
-                title: "Role Assignment Failed",
-                description: "Account verified but admin role assignment failed. Please contact support.",
+                title: "Admin Account Verified!",
+                description: "Your admin account has been successfully verified.",
+              });
+              window.history.replaceState({}, document.title, window.location.pathname);
+              navigate('/admin');
+            } else {
+              toast({
+                title: "Account Verified",
+                description: "Your account has been verified but you don't have admin privileges.",
                 variant: "destructive"
               });
-              return;
+              await supabase.auth.signOut();
             }
-
-            setIsAdmin(true);
-            toast({
-              title: "Admin Account Verified!",
-              description: "Your admin account has been successfully verified. Welcome to the admin panel!",
-            });
-
-            // Clear the hash and redirect to admin dashboard
-            window.history.replaceState({}, document.title, window.location.pathname);
-            navigate('/admin');
           }
         } catch (error) {
           console.error('Error during email confirmation:', error);
@@ -114,37 +109,23 @@ const AdminAuth = () => {
       });
       
       if (error) {
-        if (error.message.includes('Invalid login credentials')) {
-          toast({
-            title: "Login Failed",
-            description: "Invalid email or password. Please try again.",
-            variant: "destructive"
-          });
-        } else if (error.message.includes('Email not confirmed')) {
-          toast({
-            title: "Email Not Confirmed",
-            description: "Please check your email and confirm your account first.",
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Login Failed",
-            description: error.message,
-            variant: "destructive"
-          });
-        }
+        toast({
+          title: "Login Failed",
+          description: error.message,
+          variant: "destructive"
+        });
         return;
       }
       
       if (data.user) {
-        // Check admin role
-        const { data: roleData, error: roleError } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', data.user.id)
+        // Check admin status
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', data.user.id)
           .single();
         
-        if (roleError || !roleData || roleData.role !== 'admin') {
+        if (!profile?.is_admin) {
           await supabase.auth.signOut();
           toast({
             title: "Access Denied",
@@ -195,20 +176,11 @@ const AdminAuth = () => {
       });
       
       if (error) {
-        if (error.message.includes('User already registered')) {
-          toast({
-            title: "Account Exists",
-            description: "An account with this email already exists. Try logging in instead.",
-            variant: "destructive"
-          });
-          setStep('login');
-        } else {
-          toast({
-            title: "Signup Failed",
-            description: error.message,
-            variant: "destructive"
-          });
-        }
+        toast({
+          title: "Signup Failed",
+          description: error.message,
+          variant: "destructive"
+        });
         return;
       }
       
@@ -232,24 +204,19 @@ const AdminAuth = () => {
     }
   };
 
-  // Demo admin login function with correct credentials
   const handleDemoAdminLogin = async () => {
     setIsLoading(true);
     try {
-      // Use the exact credentials from your demo
       const demoEmail = 'admin@distinctgyrro.com';
       const demoPassword = 'admin123456';
       
-      // Try to sign in first
       let { data, error } = await supabase.auth.signInWithPassword({
         email: demoEmail,
         password: demoPassword
       });
       
-      // If login fails with invalid credentials, create the demo admin account
       if (error && error.message.includes('Invalid login credentials')) {
-        console.log('Creating demo admin account...');
-        
+        // Create demo admin account
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: demoEmail,
           password: demoPassword,
@@ -261,15 +228,12 @@ const AdminAuth = () => {
         });
         
         if (signUpError) {
-          console.error('Signup error:', signUpError);
           throw signUpError;
         }
         
-        // If signup succeeded and we got a session (auto-confirmed)
         if (signUpData.session) {
           data = signUpData;
         } else {
-          // Account created but needs email confirmation
           toast({
             title: "Demo Account Created",
             description: "Demo admin account created. Please check email for verification.",
@@ -281,20 +245,14 @@ const AdminAuth = () => {
       }
       
       if (data?.user) {
-        console.log('Demo admin logged in successfully');
-        
-        // Ensure admin role exists
-        const { error: roleError } = await supabase
-          .from('user_roles')
+        // Ensure admin status
+        await supabase
+          .from('profiles')
           .upsert({
-            user_id: data.user.id,
-            role: 'admin'
+            id: data.user.id,
+            is_admin: true,
+            full_name: 'Demo Admin'
           });
-        
-        if (roleError) {
-          console.error('Error assigning admin role:', roleError);
-          // Don't fail the login for role assignment errors
-        }
         
         setIsAdmin(true);
         toast({
