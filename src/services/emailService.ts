@@ -29,13 +29,13 @@ export const sendOrderConfirmationEmail = async (orderData: {
   }
 };
 
-export const sendAdminVerificationEmail = async (email: string, confirmUrl: string) => {
+export const sendAdminVerificationEmail = async (email: string, inviteLink: string) => {
   try {
     const { data, error } = await supabase.functions.invoke('send-admin-verification', {
       body: {
         email,
-        confirmUrl,
-        siteName: 'DistinctGyrro'
+        inviteLink,
+        inviterName: 'DistinctGyrro Team'
       }
     });
 
@@ -68,6 +68,28 @@ export const sendNewsletterWelcomeEmail = async (email: string, name?: string) =
     return data;
   } catch (error) {
     console.error('Failed to send newsletter welcome email:', error);
+    throw error;
+  }
+};
+
+export const sendTestEmail = async (email: string, subject: string, content: string) => {
+  try {
+    const { data, error } = await supabase.functions.invoke('send-test-email', {
+      body: {
+        email,
+        subject,
+        content
+      }
+    });
+
+    if (error) {
+      console.error('Error sending test email:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Failed to send test email:', error);
     throw error;
   }
 };

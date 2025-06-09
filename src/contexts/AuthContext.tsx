@@ -33,6 +33,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state listener
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       console.log("Auth state changed:", event, newSession?.user?.email);
+      
+      // Only accept session if email is confirmed
+      if (newSession?.user && !newSession.user.email_confirmed_at) {
+        console.log("Email not confirmed, signing out");
+        await supabase.auth.signOut();
+        setSession(null);
+        setUser(null);
+        setIsAdmin(false);
+        setIsLoading(false);
+        return;
+      }
+      
       setSession(newSession);
       setUser(newSession?.user ?? null);
       
@@ -41,8 +53,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAdmin(false);
       }
       
-      // Check admin status for authenticated users
-      if (newSession?.user) {
+      // Check admin status for authenticated users with confirmed emails
+      if (newSession?.user && newSession.user.email_confirmed_at) {
         setTimeout(() => {
           checkAdminStatus(newSession.user.id);
         }, 0);
@@ -54,10 +66,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Get initial session
     const getInitialSession = async () => {
       const { data: sessionData } = await supabase.auth.getSession();
+      
+      // Only accept session if email is confirmed
+      if (sessionData.session?.user && !sessionData.session.user.email_confirmed_at) {
+        console.log("Initial session email not confirmed, signing out");
+        await supabase.auth.signOut();
+        setSession(null);
+        setUser(null);
+        setIsAdmin(false);
+        setIsLoading(false);
+        return;
+      }
+      
       setSession(sessionData.session);
       setUser(sessionData.session?.user ?? null);
       
-      if (sessionData.session?.user) {
+      if (sessionData.session?.user && sessionData.session.user.email_confirmed_at) {
         await checkAdminStatus(sessionData.session.user.id);
       }
       

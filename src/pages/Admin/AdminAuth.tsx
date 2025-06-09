@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Eye, EyeOff, AlertCircle, Mail } from 'lucide-react';
+import { Shield, Eye, EyeOff, AlertCircle, Mail, CheckCircle } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -109,15 +109,36 @@ const AdminAuth = () => {
       });
       
       if (error) {
+        // Check if it's an email not confirmed error
+        if (error.message.includes('Email not confirmed')) {
+          toast({
+            title: "Email Verification Required",
+            description: "Please verify your email before logging in. Check your inbox for the verification link.",
+            variant: "destructive"
+          });
+          return;
+        }
+        
         toast({
           title: "Login Failed",
-          description: error.message,
+          description: "Invalid login credentials. Please check your email and password.",
           variant: "destructive"
         });
         return;
       }
       
       if (data.user) {
+        // Check if email is confirmed
+        if (!data.user.email_confirmed_at) {
+          await supabase.auth.signOut();
+          toast({
+            title: "Email Verification Required",
+            description: "Please verify your email before logging in. Check your inbox for the verification link.",
+            variant: "destructive"
+          });
+          return;
+        }
+
         // Check admin status
         const { data: profile } = await supabase
           .from('profiles')
@@ -185,6 +206,19 @@ const AdminAuth = () => {
       }
       
       if (data.user) {
+        // Send admin verification email
+        try {
+          await supabase.functions.invoke('send-admin-verification', {
+            body: {
+              email: formData.email,
+              inviteLink: redirectUrl,
+              inviterName: 'DistinctGyrro Team'
+            }
+          });
+        } catch (emailError) {
+          console.error('Error sending admin verification email:', emailError);
+        }
+
         toast({
           title: "Account Created",
           description: "Please check your email to verify your admin account.",
@@ -210,42 +244,78 @@ const AdminAuth = () => {
       const demoEmail = 'admin@distinctgyrro.com';
       const demoPassword = 'admin123456';
       
+      // First try to sign in
       let { data, error } = await supabase.auth.signInWithPassword({
         email: demoEmail,
         password: demoPassword
       });
       
       if (error && error.message.includes('Invalid login credentials')) {
-        // Create demo admin account
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        // Account doesn't exist, create it
+        console.log('Demo admin account not found, creating...');
+        
+        const { data: signUpData, error: signUpError } = await supabase.auth.admin.createUser({
           email: demoEmail,
           password: demoPassword,
-          options: {
-            data: {
-              full_name: 'Demo Admin'
-            }
+          email_confirm: true, // Automatically confirm email
+          user_metadata: {
+            full_name: 'Demo Admin'
           }
         });
         
         if (signUpError) {
-          throw signUpError;
+          // Try regular signup if admin method fails
+          const { data: regularSignUp, error: regularError } = await supabase.auth.signUp({
+            email: demoEmail,
+            password: demoPassword,
+            options: {
+              data: {
+                full_name: 'Demo Admin'
+              }
+            }
+          });
+          
+          if (regularError) {
+            throw regularError;
+          }
+          
+          // Now try to sign in again
+          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+            email: demoEmail,
+            password: demoPassword
+          });
+          
+          if (loginError) {
+            throw loginError;
+          }
+          
+          data = loginData;
+        } else {
+          data = signUpData;
+        }
+      } else if (error && error.message.includes('Email not confirmed')) {
+        // Try to update the user to confirm email
+        await supabase.auth.admin.updateUserById(data?.user?.id || '', {
+          email_confirm: true
+        });
+        
+        // Try login again
+        const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
+          email: demoEmail,
+          password: demoPassword
+        });
+        
+        if (retryError) {
+          throw retryError;
         }
         
-        if (signUpData.session) {
-          data = signUpData;
-        } else {
-          toast({
-            title: "Demo Account Created",
-            description: "Demo admin account created. Please check email for verification.",
-          });
-          return;
-        }
+        data = retryData;
       } else if (error) {
         throw error;
       }
       
       if (data?.user) {
-        // Ensure admin status
+        // Ensure admin status in profiles table
         await supabase
           .from('profiles')
           .upsert({
@@ -266,7 +336,47 @@ const AdminAuth = () => {
       console.error('Demo login error:', error);
       toast({
         title: "Demo Login Failed",
-        description: error.message || "Failed to create demo admin account",
+        description: error.message || "Failed to create or access demo admin account",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resendVerificationEmail = async () => {
+    if (!formData.email) {
+      toast({
+        title: "Email Required",
+        description: "Please enter your email address",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: formData.email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/admin/login`
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Verification Email Sent",
+        description: "Please check your inbox for the verification link.",
+      });
+    } catch (error: any) {
+      console.error('Resend verification error:', error);
+      toast({
+        title: "Failed to Resend",
+        description: error.message || "Could not resend verification email",
         variant: "destructive"
       });
     } finally {
@@ -292,6 +402,14 @@ const AdminAuth = () => {
           </p>
           
           <div className="space-y-3">
+            <CustomButton
+              onClick={resendVerificationEmail}
+              disabled={isLoading}
+              className="w-full"
+            >
+              {isLoading ? 'Sending...' : 'Resend Verification Email'}
+            </CustomButton>
+            
             <CustomButton
               onClick={() => setStep('login')}
               variant="outline"
